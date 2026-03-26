@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+.venv/
+.env
+assets/mjcf/
+*.pickle
+.claude/

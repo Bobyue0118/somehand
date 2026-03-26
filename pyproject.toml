@@ -1,0 +1,28 @@
+[project]
+name = "dex-mujoco"
+version = "0.1.0"
+description = "Universal dexterous hand retargeting based on MediaPipe and Mink"
+requires-python = ">=3.10"
+dependencies = [
+    "mujoco>=3.0.0",
+    "mink>=0.2.0",
+    "mediapipe>=0.10.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "pyyaml>=6.0",
+    "daqp",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
