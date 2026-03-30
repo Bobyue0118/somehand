@@ -109,11 +109,19 @@ def hc_mocap_frame_to_landmarks(
         if joint_name is not None:
             landmarks[i] = _point(frame, joint_name)
 
-    landmarks[4] = landmarks[3]
-    landmarks[8] = landmarks[7]
-    landmarks[12] = landmarks[11]
-    landmarks[16] = landmarks[15]
-    landmarks[20] = landmarks[19]
+    # Use End Site positions for fingertips (computed from last joint rotation + offset)
+    tip_mapping = [
+        (4, f"hc_Thumb3_{side}_EndSite", 3),
+        (8, f"hc_Index3_{side}_EndSite", 7),
+        (12, f"hc_Middle3_{side}_EndSite", 11),
+        (16, f"hc_Ring3_{side}_EndSite", 15),
+        (20, f"hc_Pinky3_{side}_EndSite", 19),
+    ]
+    for tip_idx, end_site_key, fallback_idx in tip_mapping:
+        if end_site_key in frame:
+            landmarks[tip_idx] = _point(frame, end_site_key)
+        else:
+            landmarks[tip_idx] = landmarks[fallback_idx]
     return landmarks
 
 
@@ -179,6 +187,7 @@ class _BvhSkeleton:
         offsets: np.ndarray,
         channels: list[list[str]],
         frame_time: float,
+        end_sites: dict[int, np.ndarray] | None = None,
     ):
         self.joint_names = joint_names
         self.parents = parents
@@ -186,6 +195,7 @@ class _BvhSkeleton:
         self.channels = channels
         self.frame_time = frame_time
         self.expected_floats = int(sum(len(ch) for ch in channels))
+        self.end_sites = end_sites or {}  # parent_joint_idx -> local offset
 
 
 def _parse_bvh_reference(reference_bvh: str) -> _BvhSkeleton:
@@ -196,6 +206,7 @@ def _parse_bvh_reference(reference_bvh: str) -> _BvhSkeleton:
     parents: list[int] = []
     offsets: list[np.ndarray] = []
     channels: list[list[str]] = []
+    end_sites: dict[int, np.ndarray] = {}
 
     def parse_node(i: int, parent_idx: int) -> int:
         header = lines[i].strip().split()
@@ -227,8 +238,15 @@ def _parse_bvh_reference(reference_bvh: str) -> _BvhSkeleton:
                 i += 1
                 assert lines[i].strip() == "{"
                 i += 1
+                end_offset = np.zeros(3, dtype=np.float64)
                 while lines[i].strip() != "}":
+                    es_line = lines[i].strip()
+                    if es_line.startswith("OFFSET"):
+                        end_offset = np.fromstring(
+                            es_line.split("OFFSET", 1)[1], sep=" "
+                        )
                     i += 1
+                end_sites[joint_idx] = end_offset
                 i += 1
             elif stripped == "}":
                 return i + 1
@@ -256,6 +274,7 @@ def _parse_bvh_reference(reference_bvh: str) -> _BvhSkeleton:
         offsets=np.array(offsets, dtype=np.float64),
         channels=channels,
         frame_time=frame_time,
+        end_sites=end_sites,
     )
 
 
@@ -318,6 +337,18 @@ def _frame_from_bvh_values(
         quat_xyzw = rotated.as_quat()
         quat_wxyz = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]], dtype=np.float64)
         frame[joint_name] = (position, quat_wxyz)
+
+    # Compute End Site (fingertip) positions from parent rotation + offset
+    for joint_idx, end_offset in skeleton.end_sites.items():
+        joint_name = skeleton.joint_names[joint_idx]
+        tip_global = (
+            global_positions[joint_idx]
+            + global_rotations[joint_idx].apply(end_offset)
+        )
+        tip_position = tip_global @ _OUTPUT_ROTATION_MATRIX.T + _HEIGHT_OFFSET
+        tip_key = joint_name + "_EndSite"
+        frame[tip_key] = (tip_position, frame[joint_name][1])
+
     return frame
 
 

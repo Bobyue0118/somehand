@@ -169,7 +169,27 @@ class VectorRetargeter:
         self._preprocess_frame = config.preprocess.frame
 
         self._target_directions: np.ndarray | None = None
+        self._target_angles: np.ndarray | None = None
         self._last_qpos: np.ndarray | None = None
+
+        # Angle constraints: map human joint flexion to robot joint angle
+        self._angle_landmarks = []  # list of (a, b, c) landmark triples
+        self._angle_qpos_ids = []  # qpos index for each constrained joint
+        self._angle_dof_ids = []   # velocity DOF index for gradient
+        self._angle_joint_ranges = []  # (lo, hi) for each constrained joint
+        self._angle_weights = []
+        for ac in config.angle_constraints:
+            self._angle_landmarks.append(tuple(ac.landmarks))
+            jname = ac.joint
+            jid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, jname)
+            assert jid >= 0, f"Angle constraint joint '{jname}' not found in model"
+            qadr = self.model.jnt_qposadr[jid]
+            dadr = self.model.jnt_dofadr[jid]
+            self._angle_qpos_ids.append(int(qadr))
+            self._angle_dof_ids.append(int(dadr))
+            lo, hi = self.model.jnt_range[jid]
+            self._angle_joint_ranges.append((float(lo), float(hi)))
+            self._angle_weights.append(ac.weight)
 
         nq = self.model.nq
         self._bounds = []
@@ -179,6 +199,19 @@ class VectorRetargeter:
                 self._bounds.append((float(lo), float(hi)))
             else:
                 self._bounds.append((None, None))
+
+        # Initialize only the first thumb joint (cmc_yaw/cmc_roll) to mid-range
+        # so the thumb starts pointing inward instead of sideways at qpos=0.
+        # Only the base rotation joint needs this; leave upper joints at 0
+        # so the solver is free to drive them from the direction constraints.
+        for j in range(nq):
+            jname = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, j)
+            if jname and "thumb" in jname and "cmc" in jname:
+                lo, hi = self.model.jnt_range[j]
+                if lo < hi:
+                    self.data.qpos[j] = (lo + hi) / 2.0
+                break  # only the first cmc joint
+        self._forward()
 
     def _forward(self, qpos: np.ndarray | None = None):
         if qpos is not None:
@@ -211,6 +244,11 @@ class VectorRetargeter:
             loss += self._weights[i] * (1.0 - cos_sim)
         if self._last_qpos is not None:
             loss += self._norm_delta * np.sum((qpos - self._last_qpos) ** 2)
+        if self._target_angles is not None:
+            for k in range(len(self._angle_qpos_ids)):
+                qadr = self._angle_qpos_ids[k]
+                diff = qpos[qadr] - self._target_angles[k]
+                loss += self._angle_weights[k] * diff * diff
         return loss
 
     def _compute_loss_and_grad(self, qpos: np.ndarray) -> tuple[float, np.ndarray]:
@@ -253,6 +291,17 @@ class VectorRetargeter:
             loss += self._norm_delta * np.sum(delta_q ** 2)
             grad += 2.0 * self._norm_delta * delta_q
 
+        # Angle constraints: direct joint angle matching
+        if self._target_angles is not None:
+            for k in range(len(self._angle_qpos_ids)):
+                qadr = self._angle_qpos_ids[k]
+                dadr = self._angle_dof_ids[k]
+                target = self._target_angles[k]
+                w = self._angle_weights[k]
+                diff = qpos[qadr] - target
+                loss += w * diff * diff
+                grad[dadr] += 2.0 * w * diff
+
         return loss, grad
 
     def update_targets(self, landmarks_3d: np.ndarray, handedness: str = "Right"):
@@ -272,6 +321,26 @@ class VectorRetargeter:
             else:
                 directions[i] = v / norm
         self._target_directions = directions
+
+        # Compute target angles from human landmarks
+        if self._angle_landmarks:
+            target_angles = np.zeros(len(self._angle_landmarks))
+            for k, (a, b, c) in enumerate(self._angle_landmarks):
+                v_ba = landmarks[a] - landmarks[b]
+                v_bc = landmarks[c] - landmarks[b]
+                n_ba = np.linalg.norm(v_ba)
+                n_bc = np.linalg.norm(v_bc)
+                if n_ba < 1e-8 or n_bc < 1e-8:
+                    flexion = 0.0
+                else:
+                    cos_angle = np.clip(
+                        np.dot(v_ba, v_bc) / (n_ba * n_bc), -1.0, 1.0
+                    )
+                    flexion = np.pi - np.arccos(cos_angle)
+                # Map human flexion [0, pi] to robot joint range [lo, hi]
+                lo, hi = self._angle_joint_ranges[k]
+                target_angles[k] = lo + (flexion / np.pi) * (hi - lo)
+            self._target_angles = target_angles
 
     def solve(self) -> np.ndarray:
         if self._target_directions is None:

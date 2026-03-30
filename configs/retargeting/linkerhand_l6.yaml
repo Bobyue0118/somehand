@@ -1,0 +1,161 @@
+# Retargeting config: MediaPipe -> Linkerhand L6 Right Hand
+# L6 is a simplified hand with 11 DOF total:
+#   Thumb: 3 DOF (cmc_roll, cmc_pitch, dip)
+#   Index/Middle/Ring/Pinky: 2 DOF each (mcp_pitch, dip)
+#
+# Uses cosine similarity loss (frame-invariant) with analytical Jacobians + SLSQP
+# Fewer vectors than L20 since L6 has fewer joints to constrain.
+
+hand:
+  name: "linkerhand_l6_right"
+  mjcf_path: "../../assets/mjcf/linkerhand_l6_right/model.xml"
+
+retargeting:
+  type: "vector"
+
+  human_vector_pairs:
+    # Palm structure (4 vectors)
+    - [0, 5]    # wrist -> index_mcp
+    - [0, 9]    # wrist -> middle_mcp
+    - [0, 13]   # wrist -> ring_mcp
+    - [0, 17]   # wrist -> little_mcp
+    # Thumb: 3 vectors for 3 DOF
+    - [0, 4]    # wrist -> thumb_tip (opposition vector)
+    - [1, 4]    # thumb_cmc -> thumb_tip (redundant thumb)
+    - [1, 2]    # thumb_cmc -> thumb_mcp
+    - [2, 4]    # thumb_mcp -> thumb_tip
+    - [3, 4]    # thumb_ip -> thumb_tip (dip direction)
+    # Index (2 vectors for 2 DOF)
+    - [5, 6]    # index_mcp -> index_pip
+    - [6, 8]    # index_pip -> index_tip
+    # Middle
+    - [9, 10]   # middle_mcp -> middle_pip
+    - [10, 12]  # middle_pip -> middle_tip
+    # Ring
+    - [13, 14]  # ring_mcp -> ring_pip
+    - [14, 16]  # ring_pip -> ring_tip
+    # Little
+    - [17, 18]  # little_mcp -> little_pip
+    - [18, 20]  # little_pip -> little_tip
+
+  origin_link_names:
+    - "world"
+    - "world"
+    - "world"
+    - "world"
+    - "world"
+    - "rh_thumb_metacarpals_base1"
+    - "rh_thumb_metacarpals_base1"
+    - "rh_thumb_metacarpals"
+    - "rh_thumb_distal"
+    - "rh_index_proximal"
+    - "rh_index_distal"
+    - "rh_middle_proximal"
+    - "rh_middle_distal"
+    - "rh_ring_proximal"
+    - "rh_ring_distal"
+    - "rh_pinky_proximal"
+    - "rh_pinky_distal"
+
+  task_link_names:
+    - "rh_index_proximal"
+    - "rh_middle_proximal"
+    - "rh_ring_proximal"
+    - "rh_pinky_proximal"
+    - "rh_thumb_distal_tip"
+    - "rh_thumb_distal_tip"
+    - "rh_thumb_metacarpals"
+    - "rh_thumb_distal_tip"
+    - "rh_thumb_distal_tip"
+    - "rh_index_distal"
+    - "rh_index_distal_tip"
+    - "rh_middle_distal"
+    - "rh_middle_distal_tip"
+    - "rh_ring_distal"
+    - "rh_ring_distal_tip"
+    - "rh_pinky_distal"
+    - "rh_pinky_distal_tip"
+
+  origin_link_types:
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+
+  task_link_types:
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "site"
+    - "site"
+    - "body"
+    - "site"
+    - "site"
+    - "body"
+    - "site"
+    - "body"
+    - "site"
+    - "body"
+    - "site"
+    - "body"
+    - "site"
+
+  vector_weights:
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 2.5    # opposition (most important)
+    - 1.5    # redundant thumb
+    - 1.5
+    - 1.5
+    - 1.5
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+
+  angle_constraints:
+    - landmarks: [2, 3, 4]
+      joint: "rh_thumb_dip"
+      weight: 3.0
+    # Finger dip
+    - landmarks: [6, 7, 8]
+      joint: "rh_index_dip"
+      weight: 2.0
+    - landmarks: [10, 11, 12]
+      joint: "rh_middle_dip"
+      weight: 2.0
+    - landmarks: [14, 15, 16]
+      joint: "rh_ring_dip"
+      weight: 2.0
+    - landmarks: [18, 19, 20]
+      joint: "rh_pinky_dip"
+      weight: 2.0
+
+  preprocess:
+    frame: "wrist_local"
+    temporal_filter_alpha: 0.65
+
+  solver:
+    max_iterations: 60
+    norm_delta: 0.001
+    output_alpha: 0.92

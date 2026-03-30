@@ -27,6 +27,19 @@ class HandConfig:
 
 
 @dataclass
+class AngleConstraint:
+    """Map human landmark angle to robot joint angle.
+
+    ``landmarks`` is a triple [a, b, c] of MediaPipe indices; the flexion
+    angle is measured at *b* between vectors (a→b) and (b→c).
+    ``joint`` is the robot joint name to constrain.
+    """
+    landmarks: list[int] = field(default_factory=list)
+    joint: str = ""
+    weight: float = 1.0
+
+
+@dataclass
 class RetargetingConfig:
     hand: HandConfig = field(default_factory=HandConfig)
     human_vector_pairs: list[list[int]] = field(default_factory=list)
@@ -35,6 +48,7 @@ class RetargetingConfig:
     origin_link_types: list[str] = field(default_factory=list)
     task_link_types: list[str] = field(default_factory=list)
     vector_weights: list[float] = field(default_factory=list)
+    angle_constraints: list[AngleConstraint] = field(default_factory=list)
     preprocess: PreprocessConfig = field(default_factory=PreprocessConfig)
     solver: SolverConfig = field(default_factory=SolverConfig)
 
@@ -76,6 +90,13 @@ class RetargetingConfig:
         config.vector_weights = rt.get(
             "vector_weights", [1.0] * len(config.human_vector_pairs)
         )
+
+        for ac_data in rt.get("angle_constraints", []):
+            config.angle_constraints.append(AngleConstraint(
+                landmarks=ac_data["landmarks"],
+                joint=ac_data["joint"],
+                weight=ac_data.get("weight", 1.0),
+            ))
 
         preprocess_data = rt.get("preprocess", {})
         config.preprocess = PreprocessConfig(**{
