@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.hand_model import HandModel
+from dex_mujoco.infrastructure.hand_model import HandModel
 from dex_mujoco.visualization import HandVisualizer
 
 

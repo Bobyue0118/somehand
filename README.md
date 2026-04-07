@@ -1,6 +1,6 @@
 # dex-mujoco
 
-基于 MediaPipe + Mink (MuJoCo 微分逆运动学) 的通用灵巧手 Retargeting 系统。
+基于 MediaPipe + MuJoCo 的通用灵巧手 Retargeting 系统。
 
 通过摄像头或视频捕捉人手姿态，使用向量 retargeting 策略将人手动作映射到任意机器人灵巧手模型上。
 
@@ -8,7 +8,8 @@
 
 - **通用手部模型支持**：通过 YAML 配置文件适配任意 MJCF/URDF 灵巧手模型
 - **向量 Retargeting**：匹配手指间的相对方向向量，对人手与机器人手的尺寸差异天然鲁棒
-- **实时性能**：基于 Mink 的 QP 微分逆运动学求解，支持 30+ FPS 实时运行
+- **可扩展架构**：核心库已按 `domain / application / infrastructure / interfaces` 分层重构
+- **实时性能**：基于 MuJoCo Jacobian + `scipy` SLSQP 优化，支持实时运行
 - **多输入源**：支持摄像头实时检测和视频文件离线处理
 - **URDF 自动转换**：内置 URDF → MJCF 转换工具，自动添加 actuator 和指尖 site
 
@@ -20,7 +21,7 @@
 1. 从 MediaPipe 关键点计算人手方向向量并归一化
 2. 获取机器人对应关节间的当前距离
 3. 目标位置 = 起点位置 + 人手方向 × 机器人距离
-4. 通过 Mink FrameTask 驱动 IK 求解器达到目标
+4. 通过 MuJoCo 运动学与约束优化求解器驱动机器人手达到目标
 
 ## 安装
 
@@ -55,10 +56,10 @@ python scripts/visualize_hand.py --mjcf assets/mjcf/linkerhand_l20_right/model.x
 ### 3. 实时 Retargeting（摄像头）
 
 ```bash
-dex-retarget webcam --visualize
+dex-retarget webcam
 ```
 
-`--visualize` 现在会打开两个独立的 `MuJoCo` viewer：一个看输入手势 / mocap landmarks，一个看 retarget 后的机器人手。为避免双 viewer 在同一进程下闪退，输入手势窗口会由单独子进程承载。
+默认会打开两个独立的 `MuJoCo` viewer：一个看输入手势 / mocap landmarks，一个看 retarget 后的机器人手。为避免双 viewer 在同一进程下闪退，输入手势窗口会由单独子进程承载。
 
 按 `q` 退出。
 
@@ -97,8 +98,7 @@ dex-retarget video \
 ```bash
 dex-retarget hc-mocap bvh \
     --bvh assets/ref_with_toe.bvh \
-    --hand Right \
-    --visualize
+    --hand Right
 ```
 
 实时 UDP 模式：
@@ -106,7 +106,6 @@ dex-retarget hc-mocap bvh \
 ```bash
 dex-retarget hc-mocap udp \
     --hand Right \
-    --visualize \
     --udp-stats-every 120
 ```
 
@@ -114,8 +113,7 @@ dex-retarget hc-mocap udp \
 
 ```bash
 dex-retarget hc-mocap udp \
-    --hand Left \
-    --visualize
+    --hand Left
 ```
 
 UDP 模式不依赖 `Teleopit` Python 包；只要求你的 SDK 发送的每个 UDP 包都是一行 BVH motion floats，并且 joint 顺序与 `--reference-bvh` 一致。只有离线 `--bvh` 模式在未安装 `teleopit` 时才需要 `--teleopit-root /path/to/Teleopit`。
@@ -141,8 +139,7 @@ python scripts/probe_pico_xrobotoolkit.py --hand Right
 
 ```bash
 dex-retarget pico \
-    --hand Right \
-    --visualize
+    --hand Right
 ```
 
 常见前提：
@@ -156,8 +153,7 @@ dex-retarget pico \
 ```bash
 dex-retarget pico \
     --hand Right \
-    --pico-timeout 90 \
-    --visualize
+    --pico-timeout 90
 ```
 
 ### 6. 跑验收脚本
@@ -205,29 +201,40 @@ retargeting:
     max_iterations: 20
 ```
 
+## 架构概览
+
+当前核心库已经按分层接口重构：
+
+- `domain`：纯配置模型、手部帧模型、landmark 预处理、方向目标计算
+- `application`：会话编排与 retargeting engine
+- `infrastructure`：MuJoCo/MediaPipe/PICO/hc_mocap/文件输出/预览窗口等适配器
+- `interfaces`：CLI 和面向外部的薄入口
+
+旧的顶层模块（如 `dex_mujoco.cli`、`dex_mujoco.runtime`、`dex_mujoco.vector_retargeting`）目前保留为兼容薄包装，便于逐步迁移脚本和外部调用。
+
 ## 项目结构
 
 ```
 dex-mujoco/
+├── src/dex_mujoco/
+│   ├── domain/               # 纯领域模型、配置、预处理
+│   ├── application/          # pipeline / session / engine 编排
+│   ├── infrastructure/       # MuJoCo / 输入源 / sink / 持久化
+│   ├── interfaces/           # CLI 等外部接口
+│   ├── acceptance.py         # 验收指标
+│   ├── hand_detector.py      # MediaPipe 检测封装
+│   ├── hc_mocap_input.py     # hc_mocap provider
+│   ├── pico_input.py         # PICO provider
+│   ├── urdf_converter.py     # URDF → MJCF 转换
+│   └── visualization.py      # MuJoCo viewer
 ├── configs/retargeting/    # Retargeting 配置文件
 ├── assets/mjcf/            # 转换后的 MJCF 模型（gitignored）
-├── scripts/                # 可执行脚本
+├── scripts/                # 薄工具脚本 / 诊断脚本
 │   ├── acceptance_check.py
 │   ├── convert_urdf_to_mjcf.py
 │   ├── record_webcam.py
 │   └── visualize_hand.py
-└── src/dex_mujoco/         # 核心库
-    ├── cli.py                  # 统一 dex-retarget CLI
-    ├── constants.py            # MediaPipe 关键点定义
-    ├── hand_detector.py        # MediaPipe 手部检测
-    ├── hand_model.py           # MuJoCo 模型封装
-    ├── ik_solver.py            # Mink IK 求解器
-    ├── input_sources.py        # 输入源适配
-    ├── retargeting_config.py   # 配置加载
-    ├── runtime.py              # 通用 retarget 运行时
-    ├── urdf_converter.py       # URDF → MJCF 转换
-    ├── vector_retargeting.py   # 向量 retargeting 核心
-    └── visualization.py        # MuJoCo 可视化
+└── tests/                  # 单元测试与会话编排测试
 ```
 
 ## 参考项目

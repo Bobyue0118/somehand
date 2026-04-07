@@ -1,0 +1,92 @@
+"""Shared domain data structures and lightweight protocols."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Mapping, Protocol
+
+import numpy as np
+
+
+@dataclass(slots=True)
+class HandFrame:
+    """Normalized hand-tracking frame used by the application layer."""
+
+    landmarks_3d: np.ndarray
+    landmarks_2d: np.ndarray | None
+    handedness: str
+    landmarks_3d_local: np.ndarray | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
+
+    @property
+    def retarget_landmarks(self) -> np.ndarray:
+        if self.landmarks_3d_local is not None:
+            return self.landmarks_3d_local
+        return self.landmarks_3d
+
+    @property
+    def preprocess_frame_override(self) -> str | None:
+        value = self.metadata.get("preprocess_frame_override")
+        if isinstance(value, str):
+            return value
+        return None
+
+
+@dataclass(slots=True)
+class SourceFrame:
+    """A frame read from a source, optionally containing a hand detection."""
+
+    detection: HandFrame | None
+    preview_frame: np.ndarray | None = None
+
+
+@dataclass(slots=True)
+class RetargetingStepResult:
+    """Output of a single retargeting step."""
+
+    qpos: np.ndarray
+    target_directions: np.ndarray | None
+    processed_landmarks: np.ndarray
+    handedness: str
+
+
+@dataclass(frozen=True, slots=True)
+class SessionSummary:
+    """High-level counters produced by a retargeting session."""
+
+    num_frames: int
+    num_detected: int
+    source_desc: str
+    input_type: str
+
+
+class OutputSink(Protocol):
+    @property
+    def is_running(self) -> bool: ...
+
+    def on_result(self, result: RetargetingStepResult) -> None: ...
+
+    def close(self) -> None: ...
+
+
+class PreviewWindow(Protocol):
+    def show(self, source: object, frame: SourceFrame) -> bool: ...
+
+    def close(self) -> None: ...
+
+
+class HandTrackingSource(Protocol):
+    source_desc: str
+
+    @property
+    def fps(self) -> int: ...
+
+    def is_available(self) -> bool: ...
+
+    def get_frame(self) -> SourceFrame: ...
+
+    def reset(self) -> bool: ...
+
+    def close(self) -> None: ...
+
+    def stats_snapshot(self) -> Mapping[str, object]: ...

@@ -1,0 +1,123 @@
+"""Domain configuration models for retargeting."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+@dataclass
+class SolverConfig:
+    max_iterations: int = 30
+    norm_delta: float = 0.01
+    output_alpha: float = 0.70
+
+
+@dataclass
+class PreprocessConfig:
+    frame: str = "wrist_local"
+    temporal_filter_alpha: float = 0.35
+
+
+@dataclass
+class HandConfig:
+    name: str = ""
+    mjcf_path: str = ""
+    urdf_source: str = ""
+
+
+@dataclass
+class PinchConfig:
+    enabled: bool = False
+    d1: float = 0.03
+    d2: float = 0.06
+    weight: float = 5.0
+    thumb_weight_boost: float = 1.5
+    fingertip_sites: list[str] = field(default_factory=list)
+
+
+@dataclass
+class PositionConstraint:
+    landmark: int = 0
+    body: str = ""
+    body_type: str = "body"
+    weight: float = 1.0
+
+
+@dataclass
+class PositionConfig:
+    enabled: bool = False
+    weight: float = 8.0
+    scale_landmarks: list[int] = field(default_factory=lambda: [0, 9])
+    scale_bodies: list[str] = field(default_factory=lambda: ["world", "middle_proximal"])
+    scale_body_types: list[str] = field(default_factory=lambda: ["body", "body"])
+    constraints: list[PositionConstraint] = field(default_factory=list)
+
+
+@dataclass
+class AngleConstraint:
+    landmarks: list[int] = field(default_factory=list)
+    joint: str = ""
+    weight: float = 1.0
+
+
+@dataclass
+class RetargetingConfig:
+    hand: HandConfig = field(default_factory=HandConfig)
+    human_vector_pairs: list[list[int]] = field(default_factory=list)
+    origin_link_names: list[str] = field(default_factory=list)
+    task_link_names: list[str] = field(default_factory=list)
+    origin_link_types: list[str] = field(default_factory=list)
+    task_link_types: list[str] = field(default_factory=list)
+    vector_weights: list[float] = field(default_factory=list)
+    angle_constraints: list[AngleConstraint] = field(default_factory=list)
+    pinch: PinchConfig = field(default_factory=PinchConfig)
+    position: PositionConfig = field(default_factory=PositionConfig)
+    preprocess: PreprocessConfig = field(default_factory=PreprocessConfig)
+    solver: SolverConfig = field(default_factory=SolverConfig)
+
+    @classmethod
+    def load(cls, config_path: str) -> "RetargetingConfig":
+        from dex_mujoco.infrastructure.config_loader import load_retargeting_config
+
+        return load_retargeting_config(config_path)
+
+    def validate(self) -> None:
+        n = len(self.human_vector_pairs)
+        if len(self.origin_link_names) != n:
+            raise ValueError(
+                f"origin_link_names length ({len(self.origin_link_names)}) "
+                f"must match human_vector_pairs length ({n})"
+            )
+        if len(self.task_link_names) != n:
+            raise ValueError(
+                f"task_link_names length ({len(self.task_link_names)}) "
+                f"must match human_vector_pairs length ({n})"
+            )
+        if len(self.origin_link_types) != n:
+            raise ValueError(
+                f"origin_link_types length ({len(self.origin_link_types)}) "
+                f"must match human_vector_pairs length ({n})"
+            )
+        if len(self.task_link_types) != n:
+            raise ValueError(
+                f"task_link_types length ({len(self.task_link_types)}) "
+                f"must match human_vector_pairs length ({n})"
+            )
+        if len(self.vector_weights) != n:
+            raise ValueError(
+                f"vector_weights length ({len(self.vector_weights)}) "
+                f"must match human_vector_pairs length ({n})"
+            )
+        if self.preprocess.frame not in {"camera_aligned", "wrist_local"}:
+            raise ValueError(f"Unsupported preprocess.frame: {self.preprocess.frame}")
+        if not 0.0 < self.preprocess.temporal_filter_alpha <= 1.0:
+            raise ValueError("temporal_filter_alpha must be in (0, 1]")
+        if not 0.0 < self.solver.output_alpha <= 1.0:
+            raise ValueError("solver.output_alpha must be in (0, 1]")
+        if any(link_type not in {"body", "site"} for link_type in self.origin_link_types):
+            raise ValueError("origin_link_types must only contain 'body' or 'site'")
+        if any(link_type not in {"body", "site"} for link_type in self.task_link_types):
+            raise ValueError("task_link_types must only contain 'body' or 'site'")
+        if not Path(self.hand.mjcf_path).exists():
+            raise FileNotFoundError(f"MJCF file not found: {self.hand.mjcf_path}")

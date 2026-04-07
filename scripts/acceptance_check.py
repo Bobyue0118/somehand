@@ -17,10 +17,10 @@ from dex_mujoco.acceptance import (
     synthetic_hand_pose,
     throughput_score,
 )
+from dex_mujoco.domain import RetargetingConfig
 from dex_mujoco.hand_detector import HandDetector
-from dex_mujoco.hand_model import HandModel
-from dex_mujoco.retargeting_config import RetargetingConfig
-from dex_mujoco.vector_retargeting import VectorRetargeter
+from dex_mujoco.infrastructure.hand_model import HandModel
+from dex_mujoco.infrastructure.vector_solver import VectorRetargeter
 
 
 def _result_to_dict(result: AcceptanceResult) -> dict:

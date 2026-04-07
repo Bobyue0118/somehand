@@ -1,0 +1,179 @@
+"""Unified source adapters for MediaPipe, hc_mocap, and PICO inputs."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import cv2
+import numpy as np
+
+from dex_mujoco.domain import HandFrame, SourceFrame
+from dex_mujoco.hand_detector import HandDetection, HandDetector
+from dex_mujoco.hc_mocap_input import HCMocapHandProvider, create_hc_mocap_bvh_provider, create_hc_mocap_udp_provider
+from dex_mujoco.pico_input import create_pico_provider
+
+_HAND_CONNECTIONS = (
+    (0, 1), (1, 2), (2, 3), (3, 4),
+    (0, 5), (5, 6), (6, 7), (7, 8),
+    (0, 9), (9, 10), (10, 11), (11, 12),
+    (0, 13), (13, 14), (14, 15), (15, 16),
+    (0, 17), (17, 18), (18, 19), (19, 20),
+    (5, 9), (9, 13), (13, 17),
+)
+
+
+def _to_hand_frame(detection: HandDetection, *, local_frame_override: bool = False) -> HandFrame:
+    metadata: dict[str, object] = {}
+    if local_frame_override and detection.landmarks_3d_local is not None:
+        metadata["preprocess_frame_override"] = "camera_aligned"
+    return HandFrame(
+        landmarks_3d=detection.landmarks_3d,
+        landmarks_2d=detection.landmarks_2d,
+        handedness=detection.handedness,
+        landmarks_3d_local=detection.landmarks_3d_local,
+        metadata=metadata,
+    )
+
+
+def _annotate_preview(frame: np.ndarray, detection: HandFrame) -> np.ndarray:
+    annotated = frame.copy()
+    if detection.landmarks_2d is None:
+        return annotated
+    for x, y in detection.landmarks_2d:
+        cv2.circle(annotated, (int(x), int(y)), 3, (0, 255, 0), -1)
+    for start_idx, end_idx in _HAND_CONNECTIONS:
+        p1 = tuple(detection.landmarks_2d[start_idx].astype(int))
+        p2 = tuple(detection.landmarks_2d[end_idx].astype(int))
+        cv2.line(annotated, p1, p2, (0, 200, 0), 1)
+    return annotated
+
+
+class MediaPipeInputSource:
+    def __init__(
+        self,
+        source: int | str,
+        *,
+        target_hand: str | None,
+        swap_handedness: bool,
+        source_desc: str,
+    ):
+        self.source_desc = source_desc
+        self._frames = HandDetector.create_source(source)
+        self._detector = HandDetector(
+            target_hand=target_hand,
+            swap_handedness=swap_handedness,
+        )
+        self._available = True
+
+    @property
+    def fps(self) -> int:
+        return 30
+
+    def is_available(self) -> bool:
+        return self._available
+
+    def get_frame(self) -> SourceFrame:
+        if not self._available:
+            raise StopIteration
+        try:
+            preview_frame = next(self._frames)
+        except StopIteration as exc:
+            self._available = False
+            raise StopIteration from exc
+
+        detection = self._detector.detect(preview_frame)
+        return SourceFrame(
+            detection=None if detection is None else _to_hand_frame(detection),
+            preview_frame=preview_frame,
+        )
+
+    def annotate_preview(self, frame: np.ndarray, detection: HandFrame) -> np.ndarray:
+        return _annotate_preview(frame, detection)
+
+    def reset(self) -> bool:
+        return False
+
+    def close(self) -> None:
+        self._detector.close()
+
+    def stats_snapshot(self) -> dict[str, object]:
+        return {}
+
+
+class HCMocapInputSource:
+    def __init__(self, provider: object, *, source_desc: str, use_local_frame: bool = True):
+        self.source_desc = source_desc
+        self._provider = provider
+        self._use_local_frame = use_local_frame
+
+    @property
+    def fps(self) -> int:
+        return int(getattr(self._provider, "fps", 30))
+
+    def is_available(self) -> bool:
+        return bool(self._provider.is_available())
+
+    def get_frame(self) -> SourceFrame:
+        detection = self._provider.get_detection()
+        return SourceFrame(
+            detection=_to_hand_frame(detection, local_frame_override=self._use_local_frame),
+        )
+
+    def reset(self) -> bool:
+        reset_fn = getattr(getattr(self._provider, "_provider", None), "reset", None)
+        if not callable(reset_fn):
+            return False
+        reset_fn()
+        return True
+
+    def close(self) -> None:
+        self._provider.close()
+
+    def stats_snapshot(self) -> dict[str, object]:
+        stats_fn = getattr(self._provider, "stats_snapshot", None)
+        if callable(stats_fn):
+            return dict(stats_fn())
+        return {}
+
+
+def create_hc_mocap_bvh_source(
+    *,
+    bvh_path: str,
+    handedness: str,
+    teleopit_root: str | None,
+) -> HCMocapInputSource:
+    provider = create_hc_mocap_bvh_provider(
+        bvh_path=bvh_path,
+        handedness=handedness,
+        teleopit_root=teleopit_root,
+    )
+    return HCMocapInputSource(provider, source_desc=bvh_path)
+
+
+def create_hc_mocap_udp_source(
+    *,
+    reference_bvh: str,
+    handedness: str,
+    host: str,
+    port: int,
+    timeout: float,
+) -> HCMocapInputSource:
+    provider = create_hc_mocap_udp_provider(
+        reference_bvh=reference_bvh,
+        handedness=handedness,
+        host=host,
+        port=port,
+        timeout=timeout,
+    )
+    return HCMocapInputSource(
+        provider,
+        source_desc=f"udp://{host or '0.0.0.0'}:{port}",
+    )
+
+
+def create_pico_source(*, handedness: str, timeout: float) -> HCMocapInputSource:
+    provider = create_pico_provider(handedness=handedness, timeout=timeout)
+    return HCMocapInputSource(
+        provider,
+        source_desc=f"pico://{handedness.lower()}",
+    )

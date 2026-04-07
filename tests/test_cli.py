@@ -30,17 +30,16 @@ def test_video_command_requires_video_path():
 
 def test_pico_command_uses_default_timeout():
     parser = build_parser()
-    args = parser.parse_args(["pico", "--visualize", "--hand", "Left"])
+    args = parser.parse_args(["pico", "--hand", "Left"])
 
     assert args.command == "pico"
     assert args.pico_timeout == 60.0
-    assert args.visualize is True
     assert args.hand == "Left"
 
 
 def test_webcam_command_uses_current_common_args():
     parser = build_parser()
-    args = parser.parse_args(["webcam", "--visualize"])
+    args = parser.parse_args(["webcam"])
 
     assert set(vars(args)) == {
         "camera",
@@ -49,14 +48,12 @@ def test_webcam_command_uses_current_common_args():
         "hand",
         "output",
         "swap_hands",
-        "visualize",
     }
 
 
 def test_webcam_command_uses_default_camera():
     parser = build_parser()
-    args = parser.parse_args(["webcam", "--visualize"])
+    args = parser.parse_args(["webcam"])
 
     assert args.command == "webcam"
     assert args.camera == 0
-    assert args.visualize is True
