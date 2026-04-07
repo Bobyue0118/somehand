@@ -1,4 +1,6 @@
 import sys
+import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -48,6 +50,37 @@ class _FakeSource:
         return {}
 
 
+class _LiveFakeSource(_FakeSource):
+    def __init__(self, frames, *, updates: int = 8, period_s: float = 0.01):
+        super().__init__(frames)
+        self._latest_index = 0
+        self._latest_frame = None
+        self._running = True
+        self._updates = updates
+        self._period_s = period_s
+        self._thread = threading.Thread(target=self._update_loop, daemon=True)
+        self._thread.start()
+
+    def latest_hand_frame_snapshot(self):
+        frame = self._latest_frame
+        if frame is None:
+            return None
+        return self._latest_index, frame
+
+    def close(self) -> None:
+        self._running = False
+        self._thread.join(timeout=1.0)
+        super().close()
+
+    def _update_loop(self) -> None:
+        for index in range(1, self._updates + 1):
+            if not self._running:
+                break
+            self._latest_index = index
+            self._latest_frame = _detection("Right")
+            time.sleep(self._period_s)
+
+
 class _FakeSink:
     def __init__(self):
         self.results = []
@@ -59,6 +92,22 @@ class _FakeSink:
 
     def on_result(self, result: RetargetingStepResult) -> None:
         self.results.append(result)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _FakeFrameSink:
+    def __init__(self):
+        self.frames = []
+        self.closed = False
+
+    @property
+    def is_running(self) -> bool:
+        return True
+
+    def on_frame(self, frame: HandFrame) -> None:
+        self.frames.append(frame)
 
     def close(self) -> None:
         self.closed = True
@@ -110,3 +159,34 @@ def test_session_runs_source_engine_and_sinks():
     assert sink.closed is True
     assert preview.closed is True
     assert preview.calls == 3
+
+
+def test_session_feeds_frame_sinks_inline_without_snapshot_support():
+    source = _FakeSource([SourceFrame(detection=_detection("Right"))])
+    frame_sink = _FakeFrameSink()
+
+    session = RetargetingSession(_FakeEngine(), frame_sinks=[frame_sink])
+    summary = session.run(source, input_type="test")
+
+    assert summary.num_detected == 1
+    assert len(frame_sink.frames) == 1
+    assert frame_sink.closed is True
+
+
+def test_session_decouples_frame_sinks_with_live_snapshot_source():
+    class _SlowEngine(_FakeEngine):
+        def process(self, frame: HandFrame) -> RetargetingStepResult:
+            time.sleep(0.12)
+            return super().process(frame)
+
+    source = _LiveFakeSource([SourceFrame(detection=_detection("Right"))], updates=10, period_s=0.01)
+    result_sink = _FakeSink()
+    frame_sink = _FakeFrameSink()
+
+    session = RetargetingSession(_SlowEngine(), sinks=[result_sink], frame_sinks=[frame_sink])
+    summary = session.run(source, input_type="test")
+
+    assert summary.num_detected == 1
+    assert len(result_sink.results) == 1
+    assert len(frame_sink.frames) >= 2
+    assert frame_sink.closed is True

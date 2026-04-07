@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from dex_mujoco.domain import OutputSink, RetargetingStepResult
+from dex_mujoco.domain import HandFrame, HandFrameSink, OutputSink, RetargetingStepResult, preprocess_landmarks
 from dex_mujoco.visualization import AsyncLandmarkVisualizer, HandVisualizer
 
 from .hand_model import HandModel
@@ -40,9 +40,10 @@ class RobotHandOutputSink(OutputSink):
         self._visualizer.close()
 
 
-class AsyncLandmarkOutputSink(OutputSink):
-    def __init__(self):
+class AsyncLandmarkOutputSink(OutputSink, HandFrameSink):
+    def __init__(self, *, default_preprocess_frame: str = "wrist_local"):
         self._visualizer = AsyncLandmarkVisualizer()
+        self._default_preprocess_frame = default_preprocess_frame
 
     @property
     def is_running(self) -> bool:
@@ -50,6 +51,16 @@ class AsyncLandmarkOutputSink(OutputSink):
 
     def on_result(self, result: RetargetingStepResult) -> None:
         self._visualizer.update(result.processed_landmarks)
+
+    def on_frame(self, frame: HandFrame) -> None:
+        preprocess_frame = frame.preprocess_frame_override or self._default_preprocess_frame
+        self._visualizer.update(
+            preprocess_landmarks(
+                frame.retarget_landmarks,
+                handedness=frame.handedness,
+                frame=preprocess_frame,
+            )
+        )
 
     def close(self) -> None:
         self._visualizer.close()

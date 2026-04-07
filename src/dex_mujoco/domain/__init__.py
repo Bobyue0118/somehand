@@ -10,13 +10,14 @@ from .config import (
     RetargetingConfig,
     SolverConfig,
 )
-from .models import HandFrame, HandTrackingSource, OutputSink, PreviewWindow, RetargetingStepResult, SessionSummary, SourceFrame
+from .models import HandFrame, HandFrameSink, HandTrackingSource, OutputSink, PreviewWindow, RetargetingStepResult, SessionSummary, SourceFrame
 from .preprocessing import compute_target_directions, preprocess_landmarks
 
 __all__ = [
     "AngleConstraint",
     "HandConfig",
     "HandFrame",
+    "HandFrameSink",
     "HandTrackingSource",
     "OutputSink",
     "PinchConfig",

@@ -119,6 +119,18 @@ class HCMocapInputSource:
             detection=_to_hand_frame(detection, local_frame_override=self._use_local_frame),
         )
 
+    def latest_hand_frame_snapshot(self) -> tuple[int, HandFrame] | None:
+        snapshot_fn = getattr(self._provider, "latest_detection_snapshot", None)
+        if not callable(snapshot_fn):
+            return None
+
+        snapshot = snapshot_fn()
+        if snapshot is None:
+            return None
+
+        frame_index, detection = snapshot
+        return frame_index, _to_hand_frame(detection, local_frame_override=self._use_local_frame)
+
     def reset(self) -> bool:
         reset_fn = getattr(getattr(self._provider, "_provider", None), "reset", None)
         if not callable(reset_fn):

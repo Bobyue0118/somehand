@@ -112,15 +112,16 @@ def _build_engine(args: argparse.Namespace, *, input_type: str) -> RetargetingEn
 def _build_session(engine: RetargetingEngine, *, visualize: bool, show_preview: bool) -> tuple[RetargetingSession, TrajectoryRecorder]:
     trajectory = TrajectoryRecorder()
     sinks = [trajectory]
+    frame_sinks = []
     if visualize:
+        frame_sinks.append(AsyncLandmarkOutputSink(default_preprocess_frame=engine.config.preprocess.frame))
         sinks.extend(
             [
                 RobotHandOutputSink(engine.hand_model),
-                AsyncLandmarkOutputSink(),
             ]
         )
     preview_window = OpenCvPreviewWindow() if show_preview else None
-    return RetargetingSession(engine, sinks=sinks, preview_window=preview_window), trajectory
+    return RetargetingSession(engine, sinks=sinks, frame_sinks=frame_sinks, preview_window=preview_window), trajectory
 
 
 def _print_startup(engine: RetargetingEngine, *, source_desc: str, tracking_desc: str, extra_lines: list[str] | None = None) -> None:

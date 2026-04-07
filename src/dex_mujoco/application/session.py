@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
+from threading import Event, Thread
 from collections.abc import Sequence
 
-from dex_mujoco.domain import HandTrackingSource, OutputSink, PreviewWindow, SessionSummary
+from dex_mujoco.domain import HandFrameSink, HandTrackingSource, OutputSink, PreviewWindow, SessionSummary
 
 from .engine import RetargetingEngine
 
@@ -18,15 +19,17 @@ class RetargetingSession:
         engine: RetargetingEngine,
         *,
         sinks: Sequence[OutputSink] = (),
+        frame_sinks: Sequence[HandFrameSink] = (),
         preview_window: PreviewWindow | None = None,
     ):
         self.engine = engine
         self.sinks = list(sinks)
+        self.frame_sinks = list(frame_sinks)
         self.preview_window = preview_window
 
     @property
     def is_running(self) -> bool:
-        return all(sink.is_running for sink in self.sinks)
+        return all(sink.is_running for sink in [*self.sinks, *self.frame_sinks])
 
     def run(
         self,
@@ -40,6 +43,8 @@ class RetargetingSession:
         frame_count = 0
         detected_count = 0
         frame_period = 1.0 / max(source.fps, 1)
+        frame_sink_stop = Event()
+        frame_sink_thread = self._start_frame_sink_thread(source, stop_event=frame_sink_stop)
 
         try:
             while True:
@@ -57,6 +62,9 @@ class RetargetingSession:
                 frame_count += 1
 
                 if frame.detection is not None:
+                    if frame_sink_thread is None:
+                        for sink in self.frame_sinks:
+                            sink.on_frame(frame.detection)
                     detected_count += 1
                     result = self.engine.process(frame.detection)
                     for sink in self.sinks:
@@ -90,9 +98,14 @@ class RetargetingSession:
         except KeyboardInterrupt:
             print("\nStopped.")
         finally:
+            frame_sink_stop.set()
+            if frame_sink_thread is not None:
+                frame_sink_thread.join(timeout=1.0)
             source.close()
             if self.preview_window is not None:
                 self.preview_window.close()
+            for sink in reversed(self.frame_sinks):
+                sink.close()
             for sink in reversed(self.sinks):
                 sink.close()
 
@@ -102,3 +115,36 @@ class RetargetingSession:
             source_desc=source.source_desc,
             input_type=input_type,
         )
+
+    def _start_frame_sink_thread(
+        self,
+        source: HandTrackingSource,
+        *,
+        stop_event: Event,
+    ) -> Thread | None:
+        if not self.frame_sinks:
+            return None
+
+        snapshot_fn = getattr(source, "latest_hand_frame_snapshot", None)
+        if not callable(snapshot_fn):
+            return None
+
+        def _worker() -> None:
+            last_frame_index = -1
+            sleep_s = 1.0 / max(source.fps, 1)
+            while not stop_event.is_set():
+                snapshot = snapshot_fn()
+                if snapshot is not None:
+                    frame_index, frame = snapshot
+                    if frame_index != last_frame_index:
+                        last_frame_index = frame_index
+                        for sink in self.frame_sinks:
+                            if sink.is_running:
+                                sink.on_frame(frame)
+                if not self.is_running:
+                    break
+                time.sleep(sleep_s)
+
+        thread = Thread(target=_worker, name="dex-mujoco-frame-sink", daemon=True)
+        thread.start()
+        return thread

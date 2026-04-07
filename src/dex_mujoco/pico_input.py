@@ -159,17 +159,17 @@ class PicoHandProvider:
 
             assert self._latest_state is not None
             self._last_served = self._frame_index
-            state = self._latest_state
+            state = self._latest_state.copy()
 
-        landmarks_3d = pico_hand_to_landmarks(state)
-        landmarks_3d_local = pico_hand_to_local_landmarks(state)
-        landmarks_2d = np.zeros((21, 2), dtype=np.float64)
-        return HandDetection(
-            landmarks_3d=landmarks_3d,
-            landmarks_2d=landmarks_2d,
-            handedness=self.handedness,
-            landmarks_3d_local=landmarks_3d_local,
-        )
+        return self._state_to_detection(state)
+
+    def latest_detection_snapshot(self) -> tuple[int, HandDetection] | None:
+        with self._lock:
+            if self._latest_state is None or self._frame_index <= 0:
+                return None
+            frame_index = self._frame_index
+            state = self._latest_state.copy()
+        return frame_index, self._state_to_detection(state)
 
     def close(self) -> None:
         self._running = False
@@ -182,6 +182,17 @@ class PicoHandProvider:
     def stats_snapshot(self) -> dict[str, object]:
         with self._lock:
             return dict(self._stats)
+
+    def _state_to_detection(self, state: np.ndarray) -> HandDetection:
+        landmarks_3d = pico_hand_to_landmarks(state)
+        landmarks_3d_local = pico_hand_to_local_landmarks(state)
+        landmarks_2d = np.zeros((21, 2), dtype=np.float64)
+        return HandDetection(
+            landmarks_3d=landmarks_3d,
+            landmarks_2d=landmarks_2d,
+            handedness=self.handedness,
+            landmarks_3d_local=landmarks_3d_local,
+        )
 
     def _poll_loop(self) -> None:
         xrt = self._xrt

@@ -10,3 +10,6 @@ build/
 assets/mjcf/
 *.pickle
 .claude/
+.codex
+MUJOCO_LOG.TXT
+third_party/
