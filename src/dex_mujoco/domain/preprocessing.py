@@ -14,6 +14,8 @@ _OPERATOR2ROBOT_RIGHT = np.array(
     ],
     dtype=np.float64,
 )
+_LEFT_RIGHT_ROBOT_MIRROR = np.diag([1.0, -1.0, 1.0]).astype(np.float64)
+_OPERATOR2ROBOT_LEFT = _OPERATOR2ROBOT_RIGHT @ _LEFT_RIGHT_ROBOT_MIRROR
 
 
 def _mediapipe_to_mujoco(landmarks_3d: np.ndarray) -> np.ndarray:
@@ -24,7 +26,11 @@ def _mediapipe_to_mujoco(landmarks_3d: np.ndarray) -> np.ndarray:
     return out
 
 
-def _estimate_wrist_frame(landmarks_3d: np.ndarray) -> np.ndarray:
+def _estimate_wrist_frame(
+    landmarks_3d: np.ndarray,
+    *,
+    hand_side: str,
+) -> np.ndarray:
     points = landmarks_3d[[0, 5, 9], :]
     x_vector = points[0] - points[2]
 
@@ -43,7 +49,10 @@ def _estimate_wrist_frame(landmarks_3d: np.ndarray) -> np.ndarray:
         raise ValueError("Cannot estimate palm x-axis from degenerate landmarks")
     x_axis = x_axis / x_norm
 
-    z_axis = np.cross(x_axis, normal)
+    if hand_side == "left":
+        z_axis = np.cross(normal, x_axis)
+    else:
+        z_axis = np.cross(x_axis, normal)
     z_norm = np.linalg.norm(z_axis)
     if z_norm < 1e-8:
         raise ValueError("Cannot estimate palm z-axis from degenerate landmarks")
@@ -60,14 +69,18 @@ def preprocess_landmarks(
     landmarks_3d: np.ndarray,
     hand_side: str = "right",
 ) -> np.ndarray:
-    normalize_hand_side(hand_side)
+    hand_side = normalize_hand_side(hand_side)
 
     centered = landmarks_3d - landmarks_3d[0:1, :]
+    operator_to_robot = _OPERATOR2ROBOT_LEFT if hand_side == "left" else _OPERATOR2ROBOT_RIGHT
     try:
-        wrist_frame = _estimate_wrist_frame(centered)
-        return centered @ wrist_frame @ _OPERATOR2ROBOT_RIGHT
+        wrist_frame = _estimate_wrist_frame(centered, hand_side=hand_side)
+        return centered @ wrist_frame @ operator_to_robot
     except ValueError:
-        return _mediapipe_to_mujoco(centered)
+        fallback = _mediapipe_to_mujoco(centered)
+        if hand_side == "left":
+            return fallback @ _LEFT_RIGHT_ROBOT_MIRROR
+        return fallback
 
 
 def compute_target_directions(

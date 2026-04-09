@@ -2,13 +2,28 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dex_mujoco.acceptance import mirror_pose_to_left, rotation_matrix, synthetic_hand_pose
 from dex_mujoco.domain.preprocessing import preprocess_landmarks
+from dex_mujoco.infrastructure.artifacts import load_hand_recording_artifact
+from dex_mujoco.infrastructure.hand_model import HandModel
+from dex_mujoco.infrastructure.vector_solver import VectorRetargeter
 from dex_mujoco.retargeting_config import RetargetingConfig
+from dex_mujoco.acceptance import current_alignment_metrics
 from dex_mujoco.vector_retargeting import compute_target_directions
+
+_LEFT_RIGHT_ROBOT_MIRROR = np.diag([1.0, -1.0, 1.0]).astype(np.float64)
+
+
+def _asymmetric_pose() -> np.ndarray:
+    pose = synthetic_hand_pose("pinch")
+    pose[[2, 3, 4], 2] += [0.010, 0.020, 0.030]
+    pose[[14, 15, 16], 2] += [0.005, 0.015, 0.025]
+    pose[[17, 18, 19, 20], 0] -= [0.000, 0.002, 0.004, 0.006]
+    return pose
 
 
 def test_config_resolves_absolute_mjcf_path():
@@ -51,8 +66,18 @@ def test_left_and_right_inputs_match_after_mirroring():
         vector_pairs,
         hand_side="left",
     )
-    cosine = float(np.mean(np.sum(right_dirs * left_dirs, axis=1)))
+    cosine = float(np.mean(np.sum(right_dirs * (left_dirs @ _LEFT_RIGHT_ROBOT_MIRROR), axis=1)))
     assert cosine > 0.98
+
+
+def test_left_and_right_preprocess_match_for_asymmetric_3d_pose():
+    right_pose = _asymmetric_pose()
+    left_pose = mirror_pose_to_left(right_pose)
+
+    right_processed = preprocess_landmarks(right_pose, hand_side="right")
+    left_processed = preprocess_landmarks(left_pose, hand_side="left")
+
+    assert np.allclose(left_processed, right_processed @ _LEFT_RIGHT_ROBOT_MIRROR)
 
 
 def test_wrist_local_preprocess_matches_reference_operator_frame():
@@ -81,3 +106,22 @@ def test_wrist_local_preprocess_matches_reference_operator_frame():
     expected = centered @ np.stack([x_axis, normal, z_axis], axis=1) @ operator2robot
     actual = preprocess_landmarks(pose, hand_side="right")
     assert np.allclose(actual, expected)
+
+
+@pytest.mark.skipif(
+    not Path("recordings/pico_left.pkl").exists(),
+    reason="left-hand recording fixture not available",
+)
+def test_left_recording_replay_quality_regression():
+    config = RetargetingConfig.load("configs/retargeting/left/linkerhand_l20_left.yaml")
+    recording = load_hand_recording_artifact("recordings/pico_left.pkl")
+    hand_model = HandModel(config.hand.mjcf_path)
+    retargeter = VectorRetargeter(hand_model, config)
+
+    weighted_cosines = []
+    for frame in recording["frames"][::120]:
+        retargeter.update_targets(frame.landmarks_3d, hand_side=frame.hand_side)
+        retargeter.solve()
+        weighted_cosines.append(current_alignment_metrics(retargeter)["weighted_cosine"])
+
+    assert float(np.mean(weighted_cosines)) > 0.88

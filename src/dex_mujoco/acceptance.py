@@ -29,6 +29,7 @@ from .constants import (
     WRIST,
 )
 from .vector_retargeting import compute_target_directions
+_LEFT_RIGHT_ROBOT_MIRROR = np.diag([1.0, -1.0, 1.0]).astype(np.float64)
 
 
 @dataclass
@@ -138,7 +139,7 @@ def bilateral_preprocess_consistency_score(config, vector_pairs: list[tuple[int,
         vector_pairs,
         hand_side="left",
     )
-    return mean_direction_cosine(right_dirs, left_dirs)
+    return mean_direction_cosine(right_dirs, left_dirs @ _LEFT_RIGHT_ROBOT_MIRROR)
 
 
 def static_jitter_score(retargeter, pose: np.ndarray, num_steps: int = 24, warmup: int = 8) -> float:
