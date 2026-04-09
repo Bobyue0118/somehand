@@ -124,6 +124,42 @@ def test_build_session_falls_back_to_video_only_when_visualization_unavailable(m
     assert "visualization disabled during replay video dump" in capsys.readouterr().out
 
 
+def test_build_session_skips_visualization_when_glfw_unavailable(monkeypatch, capsys):
+    class _FakeVideoSink:
+        def __init__(self, hand_model, *, output_path, fps):
+            self.hand_model = hand_model
+            self.output_path = output_path
+            self.fps = fps
+
+        @property
+        def is_running(self):
+            return True
+
+        def on_result(self, result):
+            return None
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(cli_module, "_interactive_visualization_available", lambda: (False, "GLFW is unavailable"))
+    monkeypatch.setattr(cli_module, "RobotHandVideoOutputSink", _FakeVideoSink)
+
+    engine = SimpleNamespace(hand_model=object())
+    session = cli_module._build_session(
+        engine,
+        visualize=True,
+        show_preview=False,
+        video_output_path="recordings/replay.mp4",
+        video_output_fps=30,
+        allow_visualization_fallback=True,
+    )
+
+    assert len(session.frame_sinks) == 0
+    assert len(session.sinks) == 1
+    assert isinstance(session.sinks[0], _FakeVideoSink)
+    assert "visualization disabled during replay video dump: GLFW is unavailable" in capsys.readouterr().out
+
+
 def test_fit_video_size_scales_to_offscreen_limits():
     width, height = _fit_video_size(
         requested_width=1280,

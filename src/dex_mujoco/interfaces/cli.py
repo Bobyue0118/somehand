@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import warnings
 
 from dex_mujoco.application import RetargetingEngine, RetargetingSession
 from dex_mujoco.infrastructure import (
@@ -25,6 +26,26 @@ def _close_resource(resource: object) -> None:
     close_fn = getattr(resource, "close", None)
     if callable(close_fn):
         close_fn()
+
+
+def _interactive_visualization_available() -> tuple[bool, str | None]:
+    try:
+        import glfw
+    except Exception as exc:
+        return False, str(exc)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            available = bool(glfw.init())
+        except Exception as exc:
+            return False, str(exc)
+
+    if not available:
+        return False, "GLFW is unavailable"
+
+    glfw.terminate()
+    return True, None
 
 
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -125,6 +146,11 @@ def _build_session(
 ) -> RetargetingSession:
     sinks = []
     frame_sinks = []
+    if visualize and allow_visualization_fallback and video_output_path is not None:
+        visualize_available, reason = _interactive_visualization_available()
+        if not visualize_available:
+            visualize = False
+            print(f"Warning: visualization disabled during replay video dump: {reason}")
     if visualize:
         try:
             frame_sinks.append(AsyncLandmarkOutputSink())
