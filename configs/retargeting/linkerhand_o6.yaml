@@ -131,6 +131,14 @@ retargeting:
     - 1.0
     - 1.0
 
+  vector_loss:
+    type: "direction"
+    huber_delta: 0.02
+    scaling: 1.0
+    scale_landmarks: [0, 9]
+    scale_bodies: ["world", "rh_middle_proximal"]
+    scale_body_types: ["body", "body"]
+
   angle_constraints:
     - landmarks: [2, 3, 4]
       joint: "rh_thumb_ip"
