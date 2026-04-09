@@ -5,7 +5,11 @@ from __future__ import annotations
 import mujoco
 
 
-_SIDE_PREFIXES = ("lh", "rh")
+_SIDE_PREFIXES = ("lh", "rh", "left", "right", "l", "r")
+_PREFERRED_SIDE_PREFIXES: dict[str, tuple[str, ...]] = {
+    "left": ("lh", "left", "l"),
+    "right": ("rh", "right", "r"),
+}
 _SEMANTIC_ALIASES: dict[str, tuple[str, ...]] = {
     "thumb_dip": ("thumb_ip",),
     "thumb_ip": ("thumb_dip",),
@@ -28,7 +32,7 @@ class ModelNameResolver:
     def __init__(self, model: mujoco.MjModel, *, hand_side: str):
         self.model = model
         self.hand_side = hand_side
-        self._preferred_prefix = "lh" if hand_side == "left" else "rh"
+        self._preferred_prefixes = _PREFERRED_SIDE_PREFIXES[hand_side]
         self._body_names = self._collect_names(mujoco.mjtObj.mjOBJ_BODY, model.nbody)
         self._site_names = self._collect_names(mujoco.mjtObj.mjOBJ_SITE, model.nsite)
         self._joint_names = self._collect_names(mujoco.mjtObj.mjOBJ_JOINT, model.njnt)
@@ -49,7 +53,10 @@ class ModelNameResolver:
         candidates: list[str] = []
         for variant in semantic_variants:
             stripped_variant = _strip_side_prefix(variant)
-            for candidate in (variant, f"{self._preferred_prefix}_{stripped_variant}", stripped_variant):
+            prefixed_candidates = tuple(
+                f"{prefix}_{stripped_variant}" for prefix in self._preferred_prefixes
+            )
+            for candidate in (variant, *prefixed_candidates, stripped_variant):
                 if candidate not in candidates:
                     candidates.append(candidate)
         return candidates

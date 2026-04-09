@@ -1,0 +1,146 @@
+# Retargeting config: MediaPipe -> BrainCo Revo2
+# Thumb uses 3 controllable joints; the other fingers use proximal/distal pairs.
+
+hand:
+  name: "revo2_right"
+  side: "right"
+  mjcf_path: "../../../assets/mjcf/revo2_right/model.xml"
+
+retargeting:
+  type: "vector"
+
+  human_vector_pairs:
+    # Palm structure
+    - [0, 5]
+    - [0, 9]
+    - [0, 13]
+    - [0, 17]
+    # Thumb
+    - [0, 4]
+    - [1, 4]
+    - [1, 2]
+    - [2, 4]
+    - [3, 4]
+    # Index
+    - [5, 6]
+    - [6, 8]
+    # Middle
+    - [9, 10]
+    - [10, 12]
+    # Ring
+    - [13, 14]
+    - [14, 16]
+    # Little
+    - [17, 18]
+    - [18, 20]
+
+  origin_link_names:
+    - "world"
+    - "world"
+    - "world"
+    - "world"
+    - "world"
+    - "thumb_metacarpal_link"
+    - "thumb_metacarpal_link"
+    - "thumb_proximal_link"
+    - "thumb_distal_link"
+    - "index_proximal_link"
+    - "index_distal_link"
+    - "middle_proximal_link"
+    - "middle_distal_link"
+    - "ring_proximal_link"
+    - "ring_distal_link"
+    - "pinky_proximal_link"
+    - "pinky_distal_link"
+
+  task_link_names:
+    - "index_proximal_link"
+    - "middle_proximal_link"
+    - "ring_proximal_link"
+    - "pinky_proximal_link"
+    - "thumb_distal_link_tip"
+    - "thumb_distal_link_tip"
+    - "thumb_proximal_link"
+    - "thumb_distal_link_tip"
+    - "thumb_distal_link_tip"
+    - "index_distal_link"
+    - "index_distal_link_tip"
+    - "middle_distal_link"
+    - "middle_distal_link_tip"
+    - "ring_distal_link"
+    - "ring_distal_link_tip"
+    - "pinky_distal_link"
+    - "pinky_distal_link_tip"
+
+  origin_link_types:
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+
+  task_link_types:
+    - "body"
+    - "body"
+    - "body"
+    - "body"
+    - "site"
+    - "site"
+    - "body"
+    - "site"
+    - "site"
+    - "body"
+    - "site"
+    - "body"
+    - "site"
+    - "body"
+    - "site"
+    - "body"
+    - "site"
+
+  vector_weights:
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 2.0
+    - 1.6
+    - 1.2
+    - 1.4
+    - 1.2
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+    - 1.0
+
+  vector_loss:
+    type: "residual"
+    huber_delta: 0.02
+    scaling: 1.0
+    scale_landmarks: [0, 9]
+    scale_bodies: ["world", "middle_proximal_link"]
+    scale_body_types: ["body", "body"]
+
+  preprocess:
+    temporal_filter_alpha: 0.45
+
+  solver:
+    max_iterations: 50
+    norm_delta: 0.004
+    output_alpha: 0.80

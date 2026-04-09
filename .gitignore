@@ -7,7 +7,15 @@ build/
 *.so
 .venv/
 .env
-assets/mjcf/
+assets/mjcf/*
+!assets/mjcf/dexhand021_right/
+!assets/mjcf/dexhand021_right/**
+!assets/mjcf/dexhand021_left/
+!assets/mjcf/dexhand021_left/**
+!assets/mjcf/revo2_right/
+!assets/mjcf/revo2_right/**
+!assets/mjcf/revo2_left/
+!assets/mjcf/revo2_left/**
 *.pickle
 .claude/
 .codex

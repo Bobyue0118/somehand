@@ -208,6 +208,11 @@ python scripts/acceptance_check.py \
 2. **编写配置**：在 `configs/retargeting/base/` 写共享模板，在 `configs/retargeting/left/` 或 `configs/retargeting/right/` 放可直接运行的侧别配置
 3. **运行测试**：指定新配置运行 `dex-retarget webcam --visualize` 验证效果
 
+仓库里现在也提供了两套新接入示例：
+
+- `dexhand021`：来自 `dexrobot_urdf`，建议使用 `*_simplified.urdf`
+- `revo2`：来自 `revo2_description`
+
 配置文件格式参考 `configs/retargeting/right/linkerhand_l20_right.yaml`，核心字段：
 
 ```yaml

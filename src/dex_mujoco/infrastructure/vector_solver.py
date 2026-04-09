@@ -54,6 +54,7 @@ class VectorRetargeter:
         self.config = config
         self.model = hand_model.model
         self.data = hand_model.data
+        self._mimic_joints = hand_model.mimic_joints
         self._name_resolver = ModelNameResolver(self.model, hand_side=config.hand.side)
 
         self.human_vector_pairs = [(pair[0], pair[1]) for pair in config.human_vector_pairs]
@@ -229,6 +230,16 @@ class VectorRetargeter:
             else:
                 self._bounds.append((None, None))
 
+        self._mimic_qpos_indices = {int(item["qpos_id"]) for item in self._mimic_joints}
+        self._independent_qpos_indices = [
+            qpos_index for qpos_index in range(self.model.nq) if qpos_index not in self._mimic_qpos_indices
+        ]
+        self._reduced_bounds = [self._bounds[index] for index in self._independent_qpos_indices]
+        self._mimic_by_source_qpos: dict[int, list[dict[str, float | int]]] = {}
+        for mimic in self._mimic_joints:
+            source_qpos_id = int(mimic["source_qpos_id"])
+            self._mimic_by_source_qpos.setdefault(source_qpos_id, []).append(mimic)
+
         for joint_index in range(self.model.nq):
             joint_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_index)
             if joint_name and "thumb" in joint_name and "cmc" in joint_name:
@@ -239,9 +250,28 @@ class VectorRetargeter:
 
         self._forward()
 
+    def _expand_qpos(self, qpos: np.ndarray) -> np.ndarray:
+        if qpos.shape[0] == self.model.nq:
+            full_qpos = qpos.copy()
+        else:
+            full_qpos = self.data.qpos.copy()
+            for reduced_index, qpos_index in enumerate(self._independent_qpos_indices):
+                full_qpos[qpos_index] = qpos[reduced_index]
+        return self.hand_model.apply_mimic_constraints(full_qpos)
+
+    def _reduce_qpos(self, qpos: np.ndarray) -> np.ndarray:
+        return np.asarray([qpos[index] for index in self._independent_qpos_indices], dtype=np.float64)
+
+    def _reduce_grad(self, grad: np.ndarray) -> np.ndarray:
+        reduced_grad = np.asarray([grad[index] for index in self._independent_qpos_indices], dtype=np.float64)
+        for reduced_index, qpos_index in enumerate(self._independent_qpos_indices):
+            for mimic in self._mimic_by_source_qpos.get(qpos_index, ()):
+                reduced_grad[reduced_index] += float(mimic["multiplier"]) * grad[int(mimic["qpos_id"])]
+        return reduced_grad
+
     def _forward(self, qpos: np.ndarray | None = None) -> None:
         if qpos is not None:
-            self.data.qpos[:] = qpos
+            self.data.qpos[:] = self._expand_qpos(qpos)
         mujoco.mj_fwdPosition(self.model, self.data)
 
     def _get_pos(self, index: int, is_site: bool) -> np.ndarray:
@@ -291,7 +321,8 @@ class VectorRetargeter:
         return loss
 
     def _compute_loss(self, qpos: np.ndarray) -> float:
-        self._forward(qpos)
+        full_qpos = self._expand_qpos(qpos)
+        self._forward(full_qpos)
         robot_vecs = self._get_robot_vectors()
         loss = 0.0
         for index in range(len(robot_vecs)):
@@ -308,18 +339,19 @@ class VectorRetargeter:
                 cos_sim = np.dot(robot_vecs[index] / robot_norm, self._target_directions[index])
                 loss += weight * (1.0 - cos_sim)
         if self._last_qpos is not None:
-            loss += self._norm_delta * np.sum((qpos - self._last_qpos) ** 2)
+            loss += self._norm_delta * np.sum((full_qpos - self._last_qpos) ** 2)
         if self._target_angles is not None:
             for index in range(len(self._angle_qpos_ids)):
                 qpos_id = self._angle_qpos_ids[index]
-                diff = qpos[qpos_id] - self._target_angles[index]
+                diff = full_qpos[qpos_id] - self._target_angles[index]
                 loss += self._angle_weights[index] * diff * diff
         loss += self._compute_pinch_loss()
         loss += self._compute_position_loss()
         return loss
 
     def _compute_loss_and_grad(self, qpos: np.ndarray) -> tuple[float, np.ndarray]:
-        self._forward(qpos)
+        full_qpos = self._expand_qpos(qpos)
+        self._forward(full_qpos)
         robot_vecs = self._get_robot_vectors()
         num_velocities = self.model.nv
         grad = np.zeros(num_velocities)
@@ -364,7 +396,7 @@ class VectorRetargeter:
                 grad += weight * (grad_vec @ jac_diff)
 
         if self._last_qpos is not None:
-            delta_q = qpos - self._last_qpos
+            delta_q = full_qpos - self._last_qpos
             loss += self._norm_delta * np.sum(delta_q**2)
             grad += 2.0 * self._norm_delta * delta_q
 
@@ -374,7 +406,7 @@ class VectorRetargeter:
                 dof_id = self._angle_dof_ids[index]
                 target = self._target_angles[index]
                 weight = self._angle_weights[index]
-                diff = qpos[qpos_id] - target
+                diff = full_qpos[qpos_id] - target
                 loss += weight * diff * diff
                 grad[dof_id] += 2.0 * weight * diff
 
@@ -414,7 +446,7 @@ class VectorRetargeter:
                     mujoco.mj_jacBody(self.model, self.data, jac_body, None, self._pos_body_ids[index])
                 grad += 2.0 * weight * (diff @ (jac_body - jac_wrist))
 
-        return loss, grad
+        return loss, self._reduce_grad(grad)
 
     def update_targets(
         self,
@@ -485,9 +517,9 @@ class VectorRetargeter:
 
     def solve(self) -> np.ndarray:
         if self._target_directions is None:
-            return self.data.qpos.copy()
+            return self.hand_model.apply_mimic_constraints(self.data.qpos.copy())
 
-        x0 = self.data.qpos.copy()
+        x0 = self._reduce_qpos(self.data.qpos.copy())
         previous_qpos = None if self._last_qpos is None else self._last_qpos.copy()
 
         result = minimize(
@@ -495,16 +527,17 @@ class VectorRetargeter:
             x0=x0,
             method="SLSQP",
             jac=True,
-            bounds=self._bounds,
+            bounds=self._reduced_bounds,
             options={
                 "maxiter": self._max_iterations,
                 "ftol": 1e-6,
             },
         )
 
-        qpos = result.x.copy()
+        qpos = self._expand_qpos(result.x.copy())
         if previous_qpos is not None and self._output_alpha < 1.0:
             qpos = previous_qpos + self._output_alpha * (qpos - previous_qpos)
+            qpos = self.hand_model.apply_mimic_constraints(qpos)
 
         self._last_qpos = qpos.copy()
         self._forward(qpos)
@@ -514,7 +547,7 @@ class VectorRetargeter:
         self._forward()
         if self._target_directions is None:
             return 0.0
-        return self._compute_loss(self.data.qpos.copy())
+        return self._compute_loss(self._reduce_qpos(self.data.qpos.copy()))
 
     def get_target_directions(self) -> np.ndarray | None:
         if self._target_directions is None:

@@ -9,6 +9,10 @@ import mujoco
 import numpy as np
 
 
+def _joint_type_value(value) -> int:
+    return int(value.value) if hasattr(value, "value") else int(value)
+
+
 class HandModel:
     """Wraps a MuJoCo hand model and provides kinematic queries via Mink."""
 
@@ -17,6 +21,37 @@ class HandModel:
         self.model = mujoco.MjModel.from_xml_path(self.mjcf_path)
         self.configuration = mink.Configuration(self.model)
         self.data = self.configuration.data
+        self.mimic_joints = self._collect_mimic_joints()
+        self.apply_mimic_constraints(self.data.qpos)
+
+    def _collect_mimic_joints(self) -> list[dict[str, float | int]]:
+        mimic_joints: list[dict[str, float | int]] = []
+        joint_eq_type = _joint_type_value(mujoco.mjtEq.mjEQ_JOINT)
+        for equality_index in range(self.model.neq):
+            if int(self.model.eq_type[equality_index]) != joint_eq_type:
+                continue
+            mimic_joint_id = int(self.model.eq_obj1id[equality_index])
+            source_joint_id = int(self.model.eq_obj2id[equality_index])
+            if mimic_joint_id < 0 or source_joint_id < 0:
+                continue
+            mimic_qpos_id = int(self.model.jnt_qposadr[mimic_joint_id])
+            source_qpos_id = int(self.model.jnt_qposadr[source_joint_id])
+            mimic_dof_id = int(self.model.jnt_dofadr[mimic_joint_id])
+            source_dof_id = int(self.model.jnt_dofadr[source_joint_id])
+            coefficients = self.model.eq_data[equality_index]
+            mimic_joints.append(
+                {
+                    "joint_id": mimic_joint_id,
+                    "source_joint_id": source_joint_id,
+                    "qpos_id": mimic_qpos_id,
+                    "source_qpos_id": source_qpos_id,
+                    "dof_id": mimic_dof_id,
+                    "source_dof_id": source_dof_id,
+                    "offset": float(coefficients[0]),
+                    "multiplier": float(coefficients[1]),
+                }
+            )
+        return mimic_joints
 
     @property
     def nq(self) -> int:
@@ -59,10 +94,19 @@ class HandModel:
     def get_qpos(self) -> np.ndarray:
         return self.data.qpos.copy()
 
+    def apply_mimic_constraints(self, qpos: np.ndarray) -> np.ndarray:
+        for mimic in self.mimic_joints:
+            qpos_id = int(mimic["qpos_id"])
+            source_qpos_id = int(mimic["source_qpos_id"])
+            qpos[qpos_id] = float(mimic["offset"]) + float(mimic["multiplier"]) * qpos[source_qpos_id]
+        return qpos
+
     def set_qpos(self, qpos: np.ndarray) -> None:
         self.data.qpos[:] = qpos
+        self.apply_mimic_constraints(self.data.qpos)
         mujoco.mj_forward(self.model, self.data)
 
     def reset(self) -> None:
         mujoco.mj_resetData(self.model, self.data)
+        self.apply_mimic_constraints(self.data.qpos)
         self.configuration.update()

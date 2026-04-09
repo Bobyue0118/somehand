@@ -2,11 +2,13 @@ import sys
 from pathlib import Path
 
 import pytest
+import mujoco
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dex_mujoco.retargeting_config import RetargetingConfig
 from dex_mujoco.infrastructure.hand_model import HandModel
+from dex_mujoco.infrastructure.model_name_resolver import ModelNameResolver
 from dex_mujoco.infrastructure.vector_solver import VectorRetargeter
 
 
@@ -132,3 +134,46 @@ def test_side_specific_configs_instantiate_vector_retargeter():
         hand_model = HandModel(config.hand.mjcf_path)
         retargeter = VectorRetargeter(hand_model, config)
         assert retargeter.config.hand.name == config.hand.name
+
+
+def test_model_name_resolver_supports_single_letter_prefixes():
+    model = mujoco.MjModel.from_xml_path("assets/mjcf/dexhand021_right/model.xml")
+    resolver = ModelNameResolver(model, hand_side="right")
+
+    assert resolver.resolve("f_link1_1", obj_type=mujoco.mjtObj.mjOBJ_BODY, role="Body") == "r_f_link1_1"
+    assert resolver.resolve("f_joint1_1", obj_type=mujoco.mjtObj.mjOBJ_JOINT, role="Joint") == "r_f_joint1_1"
+
+
+def test_model_name_resolver_supports_left_right_word_prefixes():
+    model = mujoco.MjModel.from_xml_path("assets/mjcf/revo2_right/model.xml")
+    resolver = ModelNameResolver(model, hand_side="right")
+
+    assert (
+        resolver.resolve("thumb_metacarpal_link", obj_type=mujoco.mjtObj.mjOBJ_BODY, role="Body")
+        == "right_thumb_metacarpal_link"
+    )
+    assert (
+        resolver.resolve("index_distal_link_tip", obj_type=mujoco.mjtObj.mjOBJ_SITE, role="Site")
+        == "right_index_distal_link_tip"
+    )
+
+
+def test_revo2_model_preserves_mimic_equalities():
+    hand_model = HandModel("assets/mjcf/revo2_right/model.xml")
+
+    assert len(hand_model.mimic_joints) == 5
+    assert hand_model.model.neq == 5
+    assert hand_model.model.nu == 6
+
+
+def test_hand_model_set_qpos_applies_mimic_relationships():
+    hand_model = HandModel("assets/mjcf/revo2_right/model.xml")
+    qpos = hand_model.get_qpos()
+    qpos[:] = 0.0
+    qpos[1] = 0.4
+    qpos[3] = 0.5
+    hand_model.set_qpos(qpos)
+
+    actual_qpos = hand_model.get_qpos()
+    assert actual_qpos[2] == pytest.approx(0.4)
+    assert actual_qpos[4] == pytest.approx(0.5 * 1.155)
