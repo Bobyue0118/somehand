@@ -1,5 +1,5 @@
 [project]
-name = "dex-mujoco"
+name = "somehand"
 version = "0.1.0"
 description = "Universal dexterous hand retargeting based on MediaPipe and Mink"
 requires-python = ">=3.10"
@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-dex-retarget = "dex_mujoco.cli:main"
+somehand = "somehand.cli:main"
 
 [build-system]
 requires = ["setuptools>=68.0"]

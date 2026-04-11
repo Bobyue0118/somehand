@@ -7,8 +7,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.application.session import RetargetingSession
-from dex_mujoco.domain.models import HandFrame, RetargetingStepResult, SourceFrame
+from somehand.application.session import RetargetingSession
+from somehand.domain.models import HandFrame, RetargetingStepResult, SourceFrame
 
 
 class _FakeEngine:

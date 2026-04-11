@@ -6,11 +6,11 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import dex_mujoco.interfaces.cli as cli_module
-import dex_mujoco.infrastructure.sinks as sinks_module
-from dex_mujoco.cli import build_parser
-from dex_mujoco.infrastructure.sinks import _fit_video_size
-from dex_mujoco.paths import DEFAULT_BIHAND_CONFIG_PATH, DEFAULT_CONFIG_PATH, DEFAULT_HC_MOCAP_REFERENCE_BVH
+import somehand.interfaces.cli as cli_module
+import somehand.infrastructure.sinks as sinks_module
+from somehand.cli import build_parser
+from somehand.infrastructure.sinks import _fit_video_size
+from somehand.paths import DEFAULT_BIHAND_CONFIG_PATH, DEFAULT_CONFIG_PATH, DEFAULT_HC_MOCAP_REFERENCE_BVH
 
 
 def test_hc_mocap_uses_repo_defaults():

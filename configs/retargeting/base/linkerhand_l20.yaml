@@ -2,8 +2,8 @@
 #
 # The palm-base vectors, pinch loss, and thumb position constraints were making
 # the optimizer fight itself on recorded PICO data. This version now keeps the
-# informative non-palm vectors but matches them with vector residuals (like
-# dex-retargeting) instead of direction-only cosine loss, which makes distal
+# informative non-palm vectors but matches them with vector residuals instead of
+# direction-only cosine loss, which makes distal
 # joints much more observable.
 
 hand:

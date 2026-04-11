@@ -1,4 +1,4 @@
-# dex-mujoco
+# somehand
 
 基于 MediaPipe + MuJoCo 的通用灵巧手 Retargeting 系统。
 
@@ -35,14 +35,14 @@ pip install -e .
 安装后主要入口是：
 
 ```bash
-dex-retarget --help
+somehand --help
 ```
 
 如果你是新 clone 下来的，也可以直接：
 
 ```bash
 git clone --recurse-submodules <repo-url>
-cd dex-mujoco
+cd somehand
 pip install -e .
 ```
 
@@ -70,7 +70,7 @@ python scripts/visualize_hand.py --mjcf assets/mjcf/linkerhand_l20_right/model.x
 ### 3. 实时 Retargeting（摄像头）
 
 ```bash
-dex-retarget webcam
+somehand webcam
 ```
 
 默认会打开两个独立的 `MuJoCo` viewer：一个看输入手势 / mocap landmarks，一个看 retarget 后的机器人手。为避免双 viewer 在同一进程下闪退，输入手势窗口会由单独子进程承载。
@@ -80,7 +80,7 @@ dex-retarget webcam
 如果想把当前输入直接录成可回放的离线数据：
 
 ```bash
-dex-retarget webcam \
+somehand webcam \
     --record-output recordings/webcam_hand.pkl
 ```
 
@@ -106,7 +106,7 @@ python scripts/acceptance_check.py \
 ### 5. 离线 Retargeting（视频）
 
 ```bash
-dex-retarget video \
+somehand video \
     --video input.mp4
 ```
 
@@ -115,7 +115,7 @@ dex-retarget video \
 如果你想绕过摄像头 / PICO / UDP 输入，直接复现某次采集到的手部 landmarks：
 
 ```bash
-dex-retarget replay \
+somehand replay \
     --recording recordings/webcam_hand.pkl
 ```
 
@@ -123,7 +123,7 @@ dex-retarget replay \
 如果想离线导出机器人手的 MuJoCo 视频，使用单独命令：
 
 ```bash
-dex-retarget dump-video \
+somehand dump-video \
     --recording recordings/webcam_hand.pkl \
     --output recordings/webcam_hand_replay.mp4
 ```
@@ -133,7 +133,7 @@ dex-retarget dump-video \
 如果你已经有 Teleopit 的 `hc_mocap` UDP 流，可以跳过 MediaPipe，直接把手骨架转成 21 点后喂给当前 retargeting：
 
 ```bash
-dex-retarget hc-mocap \
+somehand hc-mocap \
     --hand right \
     --udp-stats-every 120
 ```
@@ -141,7 +141,7 @@ dex-retarget hc-mocap \
 你当前这类高频命令现在可以缩到：
 
 ```bash
-dex-retarget hc-mocap \
+somehand hc-mocap \
     --hand left
 ```
 
@@ -168,14 +168,14 @@ python scripts/probe_pico_xrobotoolkit.py --hand right
 探测正常后，直接运行实时 retargeting：
 
 ```bash
-dex-retarget pico \
+somehand pico \
     --hand right
 ```
 
 如果想把 PICO 输入录下来，供之后离线复现：
 
 ```bash
-dex-retarget pico \
+somehand pico \
     --hand right \
     --record-output recordings/pico_hand.pkl
 ```
@@ -195,7 +195,7 @@ dex-retarget pico \
 如果长时间收不到手数据，可以把等待时间调长：
 
 ```bash
-dex-retarget pico \
+somehand pico \
     --hand right \
     --pico-timeout 90
 ```
@@ -238,7 +238,7 @@ python scripts/acceptance_check.py \
 
 1. **转换模型**：用 `convert_urdf_to_mjcf.py` 将 URDF 转换为 MJCF
 2. **编写配置**：在 `configs/retargeting/base/` 写共享模板，在 `configs/retargeting/left/` 或 `configs/retargeting/right/` 放可直接运行的侧别配置
-3. **运行测试**：指定新配置运行 `dex-retarget webcam --visualize` 验证效果
+3. **运行测试**：指定新配置运行 `somehand webcam --visualize` 验证效果
 
 仓库里现在也提供了两套新接入示例：
 
@@ -249,7 +249,7 @@ python scripts/acceptance_check.py \
 例如直接跑 `Wuji` 右手配置：
 
 ```bash
-dex-retarget webcam \
+somehand webcam \
     --config configs/retargeting/right/wujihand_right.yaml \
     --hand right
 ```
@@ -284,13 +284,13 @@ retargeting:
 - `infrastructure`：MuJoCo/MediaPipe/PICO/hc_mocap/文件输出/预览窗口等适配器
 - `interfaces`：CLI 和面向外部的薄入口
 
-旧的顶层模块（如 `dex_mujoco.cli`、`dex_mujoco.runtime`、`dex_mujoco.vector_retargeting`）目前保留为兼容薄包装，便于逐步迁移脚本和外部调用。
+顶层模块统一位于 `somehand` 包下；命令行入口、文档示例和脚本导入路径都已切换到 `somehand`。
 
 ## 项目结构
 
 ```
-dex-mujoco/
-├── src/dex_mujoco/
+somehand/
+├── src/somehand/
 │   ├── domain/               # 纯领域模型、配置、预处理
 │   ├── application/          # pipeline / session / engine 编排
 │   ├── infrastructure/       # MuJoCo / 输入源 / sink / 持久化
@@ -316,6 +316,5 @@ dex-mujoco/
 
 ## 参考项目
 
-- [dex-retargeting](https://github.com/dexsuite/dex-retargeting) — 手部 retargeting 算法
 - [mink](https://github.com/kevinzakka/mink) — MuJoCo 微分逆运动学库
 - [GMR](https://github.com/YanjieZe/GMR) — 全身运动 retargeting

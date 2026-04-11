@@ -8,13 +8,13 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.application import ControlledRetargetingSession
-from dex_mujoco.domain import HandCommand
-from dex_mujoco.infrastructure.hand_model import HandModel
-from dex_mujoco.infrastructure.controllers.adapters import LinkerHandModelAdapter, infer_linkerhand_model_family
-from dex_mujoco.infrastructure.controllers.mujoco_sim import MujocoSimController
-import dex_mujoco.interfaces.cli as cli_module
-from dex_mujoco.retargeting_config import RetargetingConfig
+from somehand.application import ControlledRetargetingSession
+from somehand.domain import HandCommand
+from somehand.infrastructure.hand_model import HandModel
+from somehand.infrastructure.controllers.adapters import LinkerHandModelAdapter, infer_linkerhand_model_family
+from somehand.infrastructure.controllers.mujoco_sim import MujocoSimController
+import somehand.interfaces.cli as cli_module
+from somehand.retargeting_config import RetargetingConfig
 
 
 class _IdentityMapping:
@@ -77,7 +77,7 @@ def test_infer_linkerhand_family_from_hand_name():
 
 
 def test_l20_adapter_maps_key_joints(monkeypatch):
-    monkeypatch.setattr("dex_mujoco.infrastructure.controllers.adapters._load_mapping_module", lambda sdk_root: _IdentityMapping)
+    monkeypatch.setattr("somehand.infrastructure.controllers.adapters._load_mapping_module", lambda sdk_root: _IdentityMapping)
     hand_model = HandModel("assets/mjcf/linkerhand_l20_right/model.xml")
     adapter = LinkerHandModelAdapter(hand_model, family="L20", hand_side="right")
     qpos = np.zeros(hand_model.nq, dtype=np.float64)
@@ -107,7 +107,7 @@ def test_l20_adapter_maps_key_joints(monkeypatch):
 
 
 def test_o6_adapter_maps_primary_sdk_axes(monkeypatch):
-    monkeypatch.setattr("dex_mujoco.infrastructure.controllers.adapters._load_mapping_module", lambda sdk_root: _IdentityMapping)
+    monkeypatch.setattr("somehand.infrastructure.controllers.adapters._load_mapping_module", lambda sdk_root: _IdentityMapping)
     hand_model = HandModel("assets/mjcf/linkerhand_o6_right/model.xml")
     adapter = LinkerHandModelAdapter(hand_model, family="O6", hand_side="right")
     qpos = np.zeros(hand_model.nq, dtype=np.float64)

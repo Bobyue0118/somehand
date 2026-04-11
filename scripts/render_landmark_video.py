@@ -10,10 +10,10 @@ import cv2
 import mujoco
 import numpy as np
 
-from dex_mujoco.domain import preprocess_landmarks
-from dex_mujoco.infrastructure.artifacts import load_bihand_recording_artifact, load_hand_recording_artifact
-from dex_mujoco.infrastructure.sinks import _create_offscreen_renderer, _fit_video_size, _transform_points
-from dex_mujoco.visualization import (
+from somehand.domain import preprocess_landmarks
+from somehand.infrastructure.artifacts import load_bihand_recording_artifact, load_hand_recording_artifact
+from somehand.infrastructure.sinks import _create_offscreen_renderer, _fit_video_size, _transform_points
+from somehand.visualization import (
     _DEFAULT_BIHAND_LANDMARK_CAMERA,
     _DEFAULT_LANDMARK_CAMERA,
     _LANDMARK_VIEWER_XML,

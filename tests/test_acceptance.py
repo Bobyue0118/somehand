@@ -6,14 +6,14 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.acceptance import mirror_pose_to_left, rotation_matrix, synthetic_hand_pose
-from dex_mujoco.domain.preprocessing import preprocess_landmarks
-from dex_mujoco.infrastructure.artifacts import load_hand_recording_artifact
-from dex_mujoco.infrastructure.hand_model import HandModel
-from dex_mujoco.infrastructure.vector_solver import VectorRetargeter
-from dex_mujoco.retargeting_config import RetargetingConfig
-from dex_mujoco.acceptance import current_alignment_metrics
-from dex_mujoco.vector_retargeting import compute_target_directions
+from somehand.acceptance import mirror_pose_to_left, rotation_matrix, synthetic_hand_pose
+from somehand.domain.preprocessing import preprocess_landmarks
+from somehand.infrastructure.artifacts import load_hand_recording_artifact
+from somehand.infrastructure.hand_model import HandModel
+from somehand.infrastructure.vector_solver import VectorRetargeter
+from somehand.retargeting_config import RetargetingConfig
+from somehand.acceptance import current_alignment_metrics
+from somehand.vector_retargeting import compute_target_directions
 
 _LEFT_RIGHT_ROBOT_MIRROR = np.diag([1.0, -1.0, 1.0]).astype(np.float64)
 

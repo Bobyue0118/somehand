@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco import visualization
+from somehand import visualization
 
 
 class _FakeHandle:

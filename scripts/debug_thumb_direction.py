@@ -107,7 +107,7 @@ def print_thumb_state(model, data, prefix=""):
 
 def test_human_transform():
     """Show what human thumb landmarks map to after transformation."""
-    from dex_mujoco.vector_retargeting import preprocess_landmarks, _OPERATOR2ROBOT_RIGHT
+    from somehand.vector_retargeting import preprocess_landmarks, _OPERATOR2ROBOT_RIGHT
 
     print(f"\n{'='*60}")
     print("Human landmark transformation test")
@@ -212,7 +212,7 @@ def main():
     try:
         test_human_transform()
     except ImportError:
-        print("\n[WARN] Could not import dex_mujoco, skipping human transform test")
+        print("\n[WARN] Could not import somehand, skipping human transform test")
         print("       Run with: python -m scripts.debug_thumb_direction")
 
 

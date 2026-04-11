@@ -6,10 +6,10 @@ import mujoco
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.retargeting_config import RetargetingConfig
-from dex_mujoco.infrastructure.hand_model import HandModel
-from dex_mujoco.infrastructure.model_name_resolver import ModelNameResolver
-from dex_mujoco.infrastructure.vector_solver import VectorRetargeter
+from somehand.retargeting_config import RetargetingConfig
+from somehand.infrastructure.hand_model import HandModel
+from somehand.infrastructure.model_name_resolver import ModelNameResolver
+from somehand.infrastructure.vector_solver import VectorRetargeter
 
 
 def test_config_validation_rejects_mismatched_vector_lengths(tmp_path):

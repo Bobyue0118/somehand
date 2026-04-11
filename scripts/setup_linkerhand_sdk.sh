@@ -29,5 +29,5 @@ if [ ! -f "$SDK_DIR/LinkerHand/utils/mapping.py" ]; then
 fi
 
 echo "==> LinkerHand SDK is ready."
-echo "==> Default dex-mujoco sdk_root now points here:"
+echo "==> Default somehand sdk_root now points here:"
 echo "    $SDK_DIR"

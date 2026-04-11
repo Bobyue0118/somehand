@@ -6,11 +6,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.urdf_converter import convert_urdf_to_mjcf
+from somehand.urdf_converter import convert_urdf_to_mjcf
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert URDF to MJCF for dex-mujoco")
+    parser = argparse.ArgumentParser(description="Convert URDF to MJCF for somehand")
     parser.add_argument("--urdf", required=True, help="Path to URDF file")
     parser.add_argument("--output", required=True, help="Output directory for MJCF")
     parser.add_argument("--name", default=None, help="Model name (default: URDF stem)")

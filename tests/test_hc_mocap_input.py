@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from pathlib import Path
 
-from dex_mujoco.hc_mocap_input import (
+from somehand.hc_mocap_input import (
     _frame_from_bvh_values,
     _parse_bvh_reference,
     HCMocapHandProvider,

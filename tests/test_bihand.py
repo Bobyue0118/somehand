@@ -6,15 +6,15 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import dex_mujoco.interfaces.cli as cli_module
-import dex_mujoco.infrastructure.sinks as sinks_module
-from dex_mujoco.cli import build_parser
-from dex_mujoco.domain import BiHandFrame, BiHandRetargetingConfig, BiHandSourceFrame, HandFrame, RetargetingConfig
-from dex_mujoco.infrastructure.artifacts import load_bihand_recording_artifact, save_bihand_recording_artifact
-from dex_mujoco.infrastructure.hand_model import HandModel
-from dex_mujoco.infrastructure.sources import RecordingBiHandTrackingSource, create_bihand_recording_source
-from dex_mujoco.paths import DEFAULT_BIHAND_CONFIG_PATH, DEFAULT_HC_MOCAP_REFERENCE_BVH
-from dex_mujoco.visualization import BiHandScene
+import somehand.interfaces.cli as cli_module
+import somehand.infrastructure.sinks as sinks_module
+from somehand.cli import build_parser
+from somehand.domain import BiHandFrame, BiHandRetargetingConfig, BiHandSourceFrame, HandFrame, RetargetingConfig
+from somehand.infrastructure.artifacts import load_bihand_recording_artifact, save_bihand_recording_artifact
+from somehand.infrastructure.hand_model import HandModel
+from somehand.infrastructure.sources import RecordingBiHandTrackingSource, create_bihand_recording_source
+from somehand.paths import DEFAULT_BIHAND_CONFIG_PATH, DEFAULT_HC_MOCAP_REFERENCE_BVH
+from somehand.visualization import BiHandScene
 
 
 def _hand_frame(hand_side: str) -> HandFrame:

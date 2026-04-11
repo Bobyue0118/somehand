@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.domain import display_hand_side, normalize_hand_side
+from somehand.domain import display_hand_side, normalize_hand_side
 
 
 INPUT_MODE_LABELS = {
@@ -226,7 +226,7 @@ def _next_steps(log_summary: LogSummary, probe_stats: ProbeStats, target_hand: s
     if target_hand == "left" and probe_stats.left.active_samples == 0:
         steps.append("左手始终 inactive；先在头显前做明显张合动作，保持左手进入相机视野。")
     if not steps:
-        steps.append("探测正常；现在可以重新运行 `dex-retarget pico --hand right --visualize`。")
+        steps.append("探测正常；现在可以重新运行 `somehand pico --hand right --visualize`。")
     return steps
 
 

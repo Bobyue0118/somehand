@@ -5,10 +5,10 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.domain.models import HandFrame, SourceFrame
-from dex_mujoco.infrastructure.artifacts import load_hand_recording_artifact, save_hand_recording_artifact
-from dex_mujoco.infrastructure.sources import RecordingHandTrackingSource, create_recording_source
-from dex_mujoco.infrastructure.terminal_controls import TerminalRecordingController
+from somehand.domain.models import HandFrame, SourceFrame
+from somehand.infrastructure.artifacts import load_hand_recording_artifact, save_hand_recording_artifact
+from somehand.infrastructure.sources import RecordingHandTrackingSource, create_recording_source
+from somehand.infrastructure.terminal_controls import TerminalRecordingController
 
 
 def _frame(hand_side: str = "right") -> HandFrame:

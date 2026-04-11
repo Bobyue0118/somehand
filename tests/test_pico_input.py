@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import dex_mujoco.pico_input as pico_input
+import somehand.pico_input as pico_input
 
 
 class _FakeThread:

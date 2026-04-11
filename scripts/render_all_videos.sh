@@ -135,7 +135,7 @@ render_group() {
 
         echo "[render] $group/$config_name"
         if [[ "$subcommand" == "bihand" ]]; then
-            if "$PYTHON_BIN" -m dex_mujoco.cli bihand dump-video \
+            if "$PYTHON_BIN" -m somehand.cli bihand dump-video \
                 --config "$config_path" \
                 --recording "$recording" \
                 --output "$output_path"; then
@@ -144,7 +144,7 @@ render_group() {
                 failed+=("$config_path")
             fi
         else
-            if "$PYTHON_BIN" -m dex_mujoco.cli dump-video \
+            if "$PYTHON_BIN" -m somehand.cli dump-video \
                 --config "$config_path" \
                 --recording "$recording" \
                 --output "$output_path"; then

@@ -1,4 +1,4 @@
-"""Acceptance script for dex-mujoco retargeting quality."""
+"""Acceptance script for somehand retargeting quality."""
 
 import argparse
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dex_mujoco.acceptance import (
+from somehand.acceptance import (
     AcceptanceResult,
     bilateral_preprocess_consistency_score,
     current_alignment_metrics,
@@ -17,10 +17,10 @@ from dex_mujoco.acceptance import (
     synthetic_hand_pose,
     throughput_score,
 )
-from dex_mujoco.domain import RetargetingConfig, normalize_hand_side
-from dex_mujoco.hand_detector import HandDetector
-from dex_mujoco.infrastructure.hand_model import HandModel
-from dex_mujoco.infrastructure.vector_solver import VectorRetargeter
+from somehand.domain import RetargetingConfig, normalize_hand_side
+from somehand.hand_detector import HandDetector
+from somehand.infrastructure.hand_model import HandModel
+from somehand.infrastructure.vector_solver import VectorRetargeter
 
 
 def _result_to_dict(result: AcceptanceResult) -> dict:
@@ -89,7 +89,7 @@ def run_video_check(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run dex-mujoco acceptance checks")
+    parser = argparse.ArgumentParser(description="Run somehand acceptance checks")
     parser.add_argument(
         "--config",
         default="configs/retargeting/right/linkerhand_l20_right.yaml",
