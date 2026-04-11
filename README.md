@@ -26,6 +26,7 @@
 ## 安装
 
 ```bash
+git submodule update --init --recursive
 pip install -e .
 ```
 
@@ -36,6 +37,19 @@ pip install -e .
 ```bash
 dex-retarget --help
 ```
+
+如果你是新 clone 下来的，也可以直接：
+
+```bash
+git clone --recurse-submodules <repo-url>
+cd dex-mujoco
+pip install -e .
+```
+
+可选的第三方 SDK 现在统一放在 `third_party/`：
+
+- `third_party/xrobotoolkit/XRoboToolkit-PC-Service-Pybind`：PICO / XRoboToolkit Python binding 子仓库
+- `third_party/linkerhand-python-sdk`：LinkerHand Python SDK 子仓库（real backend 默认从这里找）
 
 ## 快速开始
 
@@ -141,6 +155,7 @@ dex-retarget hc-mocap \
 先确保 `xrobotoolkit_sdk` 可导入；如果没装，可以运行：
 
 ```bash
+git submodule update --init --recursive
 bash scripts/setup_xrobotoolkit.sh
 ```
 
@@ -184,6 +199,23 @@ dex-retarget pico \
     --hand right \
     --pico-timeout 90
 ```
+
+### 5.4 LinkerHand 真机 backend
+
+如果你想直接把 retarget 结果发到 LinkerHand 真手，先初始化 SDK 子仓库：
+
+```bash
+git submodule update --init --recursive
+bash scripts/setup_linkerhand_sdk.sh
+```
+
+现在默认 `sdk_root` 就是仓库内的：
+
+```text
+third_party/linkerhand-python-sdk
+```
+
+因此通常不需要再手动传 `--sdk-root`；只有当你想切到自定义 SDK 路径时才需要覆盖。
 
 ### 6. 跑验收脚本
 

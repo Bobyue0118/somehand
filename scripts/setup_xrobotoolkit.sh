@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
 # One-click setup for xrobotoolkit_sdk (PICO VR hand tracking).
-# Usage: bash scripts/setup_xrobotoolkit.sh [install_dir]
+# Usage: bash scripts/setup_xrobotoolkit.sh [pybind_dir]
 #
-# Default install_dir: ./third_party/xrobotoolkit
+# Default pybind_dir: ./third_party/xrobotoolkit/XRoboToolkit-PC-Service-Pybind
 
 set -euo pipefail
 
-INSTALL_DIR="${1:-$(dirname "$0")/../third_party/xrobotoolkit}"
-INSTALL_DIR="$(mkdir -p "$INSTALL_DIR" && cd "$INSTALL_DIR" && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PYBIND_DIR="${1:-$REPO_ROOT/third_party/xrobotoolkit/XRoboToolkit-PC-Service-Pybind}"
+PYBIND_DIR="$(mkdir -p "$(dirname "$PYBIND_DIR")" && cd "$(dirname "$PYBIND_DIR")" && pwd)/$(basename "$PYBIND_DIR")"
 
-PYBIND_REPO="https://github.com/YanjieZe/XRoboToolkit-PC-Service-Pybind.git"
 SDK_REPO="https://github.com/XR-Robotics/XRoboToolkit-PC-Service.git"
 
-echo "==> Installing xrobotoolkit_sdk to: $INSTALL_DIR"
+echo "==> Using xrobotoolkit_sdk source at: $PYBIND_DIR"
 
-# ---- 1. Clone pybind project ----
-PYBIND_DIR="$INSTALL_DIR/XRoboToolkit-PC-Service-Pybind"
-if [ -d "$PYBIND_DIR" ]; then
-    echo "==> Pybind repo already exists, pulling latest..."
-    git -C "$PYBIND_DIR" pull --ff-only || true
-else
-    echo "==> Cloning pybind repo..."
-    git clone "$PYBIND_REPO" "$PYBIND_DIR"
+# ---- 1. Ensure pybind submodule exists ----
+if [ ! -f "$PYBIND_DIR/setup.py" ]; then
+    echo "==> Pybind submodule missing, trying to initialize it..."
+    git -C "$REPO_ROOT" submodule update --init --recursive -- "third_party/xrobotoolkit/XRoboToolkit-PC-Service-Pybind" || true
 fi
 
-# ---- 2. Clone & build C++ SDK ----
+if [ ! -f "$PYBIND_DIR/setup.py" ]; then
+    echo "==> ERROR: XRoboToolkit pybind source not found at: $PYBIND_DIR"
+    echo "==> Please run: git submodule update --init --recursive"
+    exit 1
+fi
+
+# ---- 2. Clone & build nested C++ SDK ----
 SDK_DIR="$PYBIND_DIR/XRoboToolkit-PC-Service"
 if [ -d "$SDK_DIR" ]; then
     echo "==> SDK repo already exists, pulling latest..."

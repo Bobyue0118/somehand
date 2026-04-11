@@ -16,6 +16,11 @@ from dex_mujoco.paths import DEFAULT_LINKERHAND_SDK_PATH
 
 _FAMILY_PATTERN = re.compile(r"(o6|l6|l7|l10|l20|l21|l25|g20)", re.IGNORECASE)
 _SUPPORTED_FAMILIES = {"O6", "L6", "L7", "L10", "L20", "L21", "L25", "G20"}
+_SIDE_PREFIXES = ("lh", "rh", "left", "right", "l", "r")
+_PREFERRED_SIDE_PREFIXES: dict[str, tuple[str, ...]] = {
+    "left": ("lh", "left", "l"),
+    "right": ("rh", "right", "r"),
+}
 
 # LinkerHand 电机默认参数（来自 LinkerHand SDK 规格说明）
 # 速度单位：内部 SDK 单位（约对应 °/s 量级），180 是厂商推荐的安全默认速度
@@ -109,6 +114,18 @@ class LinkerHandModelAdapter:
         values = np.asarray(qpos, dtype=np.float64)
         if values.shape[0] != self.hand_model.nq:
             raise ValueError(f"Expected qpos of shape ({self.hand_model.nq},), got {values.shape}")
+        if self.family == "O6":
+            return np.asarray(
+                [
+                    self._joint("thumb_cmc_pitch", values),
+                    self._joint("thumb_cmc_yaw", values),
+                    self._joint("index_mcp_pitch", values),
+                    self._joint("middle_mcp_pitch", values),
+                    self._joint("ring_mcp_pitch", values),
+                    self._joint("pinky_mcp_pitch", values),
+                ],
+                dtype=np.float64,
+            )
         if self.family == "L10":
             return np.asarray(
                 [
@@ -218,6 +235,24 @@ class LinkerHandModelAdapter:
     def sdk_arc_to_qpos(self, sdk_arc: np.ndarray) -> np.ndarray:
         arc = np.asarray(sdk_arc, dtype=np.float64)
         qpos = np.zeros(self.hand_model.nq, dtype=np.float64)
+        if self.family == "O6":
+            thumb_pitch = float(arc[0])
+            thumb_yaw = float(arc[1])
+            thumb_ip = thumb_pitch * (1.08 / 0.58) if thumb_pitch > 0 else 0.0
+            self._set_joint(qpos, "thumb_cmc_pitch", thumb_pitch)
+            self._set_joint(qpos, "thumb_cmc_yaw", thumb_yaw)
+            self._set_joint(qpos, "thumb_ip", thumb_ip)
+            for finger_name, flexion_index in [
+                ("index", 2),
+                ("middle", 3),
+                ("ring", 4),
+                ("pinky", 5),
+            ]:
+                mcp_value = float(arc[flexion_index])
+                dip_value = mcp_value * (1.43 / 1.6) if mcp_value > 0 else 0.0
+                self._set_joint(qpos, f"{finger_name}_mcp_pitch", mcp_value)
+                self._set_joint(qpos, f"{finger_name}_dip", dip_value)
+            return qpos
         if self.family == "L10":
             self._set_joint(qpos, "thumb_cmc_pitch", arc[0])
             self._set_joint(qpos, "thumb_cmc_roll", arc[1])
@@ -291,13 +326,33 @@ class LinkerHandModelAdapter:
         raise ValueError(f"SDK adapter not implemented for family: {self.family}")
 
     def _joint(self, name: str, qpos: np.ndarray) -> float:
-        index = self._joint_index.get(name)
+        index = self._joint_index.get(self._resolve_joint_name(name))
         if index is None:
             return 0.0
         return float(qpos[index])
 
     def _set_joint(self, qpos: np.ndarray, name: str, value: float) -> None:
-        index = self._joint_index.get(name)
+        index = self._joint_index.get(self._resolve_joint_name(name))
         if index is None:
             return
         qpos[index] = float(value)
+
+    def _resolve_joint_name(self, semantic_name: str) -> str:
+        if semantic_name in self._joint_index:
+            return semantic_name
+
+        stripped = semantic_name
+        for prefix in _SIDE_PREFIXES:
+            token = f"{prefix}_"
+            if stripped.startswith(token):
+                stripped = stripped[len(token):]
+                break
+
+        for prefix in _PREFERRED_SIDE_PREFIXES.get(self.hand_side, ()):
+            candidate = f"{prefix}_{stripped}"
+            if candidate in self._joint_index:
+                return candidate
+
+        if stripped in self._joint_index:
+            return stripped
+        return semantic_name

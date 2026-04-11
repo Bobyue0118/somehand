@@ -60,9 +60,9 @@ class ControlledRetargetingSession:
         frame_period = 1.0 / max(source.fps, 1)
         frame_sink_stop = Event()
         frame_sink_thread = self._start_frame_sink_thread(source, stop_event=frame_sink_stop)
-        self.controller.start()
 
         try:
+            self.controller.start()
             while True:
                 if stop_condition is not None and stop_condition():
                     break

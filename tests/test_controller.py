@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -103,6 +104,33 @@ def test_l20_adapter_maps_key_joints(monkeypatch):
     assert restored[index["index_mcp_pitch"]] == 0.52
     assert restored[index["index_mcp_roll"]] == 0.12
     assert restored[index["index_dip"]] == 0.77
+
+
+def test_o6_adapter_maps_primary_sdk_axes(monkeypatch):
+    monkeypatch.setattr("dex_mujoco.infrastructure.controllers.adapters._load_mapping_module", lambda sdk_root: _IdentityMapping)
+    hand_model = HandModel("assets/mjcf/linkerhand_o6_right/model.xml")
+    adapter = LinkerHandModelAdapter(hand_model, family="O6", hand_side="right")
+    qpos = np.zeros(hand_model.nq, dtype=np.float64)
+    index = hand_model.get_joint_name_to_qpos_index()
+    qpos[index["rh_thumb_cmc_pitch"]] = 0.31
+    qpos[index["rh_thumb_cmc_yaw"]] = 0.52
+    qpos[index["rh_thumb_ip"]] = 0.66
+    qpos[index["rh_index_mcp_pitch"]] = 1.00
+    qpos[index["rh_middle_mcp_pitch"]] = 1.10
+    qpos[index["rh_ring_mcp_pitch"]] = 1.20
+    qpos[index["rh_pinky_mcp_pitch"]] = 1.30
+
+    arc = adapter.qpos_to_sdk_arc(qpos)
+    restored = adapter.sdk_arc_to_qpos(arc)
+
+    assert np.allclose(arc, [0.31, 0.52, 1.00, 1.10, 1.20, 1.30])
+    assert restored[index["rh_thumb_cmc_pitch"]] == pytest.approx(0.31)
+    assert restored[index["rh_thumb_cmc_yaw"]] == pytest.approx(0.52)
+    assert restored[index["rh_thumb_ip"]] == pytest.approx(0.31 * (1.08 / 0.58))
+    assert restored[index["rh_index_mcp_pitch"]] == pytest.approx(1.00)
+    assert restored[index["rh_index_dip"]] == pytest.approx(1.00 * (1.43 / 1.6))
+    assert restored[index["rh_middle_mcp_pitch"]] == pytest.approx(1.10)
+    assert restored[index["rh_middle_dip"]] == pytest.approx(1.10 * (1.43 / 1.6))
 
 
 def test_mujoco_sim_controller_applies_ctrlrange_clipped_targets():
@@ -481,3 +509,92 @@ def test_build_runtime_session_can_skip_landmark_viewer_for_sim(monkeypatch):
         ("target", engine.hand_model, None, None, "Retargeting"),
         ("state", engine.hand_model, None, None, "Sim State"),
     ]
+
+
+def test_controlled_session_cleans_up_when_controller_start_fails():
+    class _FakeSource:
+        def __init__(self):
+            self.source_desc = "fake://source"
+            self.closed = False
+
+        @property
+        def fps(self):
+            return 30
+
+        def is_available(self):
+            return False
+
+        def get_frame(self):
+            raise StopIteration
+
+        def reset(self):
+            return False
+
+        def close(self):
+            self.closed = True
+
+        def stats_snapshot(self):
+            return {}
+
+    class _FakeSink:
+        def __init__(self):
+            self.closed = False
+
+        @property
+        def is_running(self):
+            return True
+
+        def on_result(self, result):
+            return None
+
+        def close(self):
+            self.closed = True
+
+    class _FakePreview:
+        def __init__(self):
+            self.closed = False
+
+        def show(self, source, frame):
+            return True
+
+        def close(self):
+            self.closed = True
+
+    class _FailingController:
+        def __init__(self):
+            self.closed = False
+
+        @property
+        def is_running(self):
+            return False
+
+        def start(self):
+            raise ModuleNotFoundError("No module named 'can'")
+
+        def set_command(self, command):
+            return None
+
+        def get_state(self):
+            return None
+
+        def close(self):
+            self.closed = True
+
+    source = _FakeSource()
+    sink = _FakeSink()
+    preview = _FakePreview()
+    controller = _FailingController()
+    session = ControlledRetargetingSession(
+        SimpleNamespace(config=SimpleNamespace()),
+        controller,
+        sinks=[sink],
+        preview_window=preview,
+    )
+
+    with pytest.raises(ModuleNotFoundError, match="can"):
+        session.run(source, input_type="replay")
+
+    assert source.closed is True
+    assert sink.closed is True
+    assert preview.closed is True
+    assert controller.closed is True

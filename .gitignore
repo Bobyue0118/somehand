@@ -24,7 +24,10 @@ assets/mjcf/*
 .claude/
 .codex
 MUJOCO_LOG.TXT
-third_party/
+third_party/*
+!third_party/linkerhand-python-sdk
+!third_party/xrobotoolkit/
+!third_party/xrobotoolkit/XRoboToolkit-PC-Service-Pybind
 recordings/*.mp4
 recordings/.*.mp4
 recordings/samples/
