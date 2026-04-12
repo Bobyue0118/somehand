@@ -396,6 +396,14 @@ def _build_runtime_session(
                             window_title="Sim State",
                         )
                     )
+            elif args.backend == "real":
+                sinks.append(
+                    RobotHandTargetOutputSink(
+                        engine.hand_model,
+                        key_callback=key_callback,
+                        window_title="Retargeting",
+                    )
+                )
             else:
                 sinks.append(
                     RobotHandOutputSink(

@@ -13,6 +13,32 @@
 - **多输入源**：支持摄像头实时检测和视频文件离线处理
 - **URDF 自动转换**：内置 URDF → MJCF 转换工具，自动添加 actuator 和指尖 site
 
+## 已支持的 Dex Hand
+
+下表按当前仓库中的 retargeting 配置整理，新增机型时建议同步更新。
+
+| 公司 | 型号 |
+| --- | --- |
+| DexRobot | DexHand021 |
+| LinkerHand | L6 |
+| LinkerHand | L10 |
+| LinkerHand | L20 |
+| LinkerHand | L20 Pro |
+| LinkerHand | L21 |
+| LinkerHand | L25 |
+| LinkerHand | L30 |
+| LinkerHand | LHG20 |
+| LinkerHand | O6 |
+| LinkerHand | O7 |
+| LinkerHand | T12 |
+| BrainCo | Revo2 |
+| Wuji | Wuji Hand |
+
+说明：
+
+- 这张表描述的是 **retargeting 配置支持**，不等同于所有机型都具备真机 `real` backend 支持。
+- 云端默认分发的是运行所需的 `MJCF` 资产，不是 `URDF` 源文件。
+
 ## 核心算法
 
 向量 retargeting 的核心思想：**方向取自人手，长度取自机器人**。
@@ -30,24 +56,32 @@ git submodule update --init --recursive
 pip install -e .
 ```
 
-项目里的大体积 `assets` 建议走外部仓库，不直接塞进 Git。现在支持和 `Teleopit` 类似的下载流程：
+项目里的大体积 `assets` / 样例数据建议走外部仓库，不直接塞进 Git。现在支持和 `Teleopit` 类似的下载流程：
 
 ```bash
 # ModelScope（推荐）
-python scripts/setup/download_assets.py --repo-id <your-modelscope-repo>
+python scripts/setup/download_assets.py --repo-id BingqianWu/somehand-assets
 
 # 或者先配置环境变量，再按组下载
-export SOMEHAND_MODELSCOPE_REPO_ID=<your-modelscope-repo>
-python scripts/setup/download_assets.py --only mjcf mediapipe
+export SOMEHAND_MODELSCOPE_REPO_ID=BingqianWu/somehand-assets
+python scripts/setup/download_assets.py --only mjcf mediapipe examples
 
 # HuggingFace 也支持
-python scripts/setup/download_assets.py --source huggingface --repo-id <your-hf-repo>
+python scripts/setup/download_assets.py --source huggingface --repo-id 12e21/somehand-assets
 ```
 
-脚本当前约定的远端布局写在 `src/somehand/external_assets.py`，默认包含两组资源：
+脚本当前约定的远端布局写在 `src/somehand/external_assets.py`，当前包含三组资源：
 
 - `mjcf`：`archives/mjcf_assets.tar.gz` → `assets/mjcf/`
 - `mediapipe`：`models/hand_landmarker.task` → `assets/models/hand_landmarker.task`
+- `examples`：
+  - `archives/reference_assets.tar.gz` → `assets/`
+  - `archives/sample_recordings.tar.gz` → `recordings/`
+
+当前默认资产模型仓：
+
+- `ModelScope`：`BingqianWu/somehand-assets`
+- `HuggingFace`：`12e21/somehand-assets`
 
 主要依赖：mujoco, mink, mediapipe, opencv-python, numpy, pyyaml, daqp
 
@@ -74,13 +108,19 @@ pip install -e .
 
 ### 1. 准备 assets
 
-如果你已经有外部 asset 仓库，先把默认资源拉下来：
+如果你已经有外部 asset 仓库，先把默认运行资源拉下来：
 
 ```bash
-python scripts/setup/download_assets.py --only mjcf mediapipe --repo-id <your-modelscope-repo>
+python scripts/setup/download_assets.py --only mjcf mediapipe --repo-id BingqianWu/somehand-assets
 ```
 
 `hc-mocap` 默认使用代码内置的 joint 顺序和骨架定义，不再依赖仓库里的默认 `BVH` 文件；只有你想覆盖默认 UDP 解析格式时，才需要额外传 `--reference-bvh <path>`.
+
+如果你想下载仓库里不再直接存放的参考 `BVH` 和样例录制数据：
+
+```bash
+python scripts/setup/download_assets.py --only examples --repo-id BingqianWu/somehand-assets
+```
 
 如果你不想维护远端资产，也可以继续手动转换/准备本地文件。
 

@@ -37,6 +37,18 @@ ASSET_GROUPS: dict[str, list[AssetEntry]] = {
             local_path="assets/models/hand_landmarker.task",
         ),
     ],
+    "examples": [
+        AssetEntry(
+            remote_path="archives/reference_assets.tar.gz",
+            local_path="assets",
+            mode="extract",
+        ),
+        AssetEntry(
+            remote_path="archives/sample_recordings.tar.gz",
+            local_path="recordings",
+            mode="extract",
+        ),
+    ],
 }
 
 
