@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import mujoco
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -105,6 +106,34 @@ def test_wrist_local_preprocess_matches_reference_operator_frame():
     expected = centered @ np.stack([x_axis, normal, z_axis], axis=1) @ operator2robot
     actual = preprocess_landmarks(pose, hand_side="right")
     assert np.allclose(actual, expected)
+
+
+def test_thumb_frame_is_local_to_cmc_body():
+    config = load_retargeting_config("configs/retargeting/right/linkerhand_l21_right.yaml")
+    hand_model = HandModel(config.hand.mjcf_path)
+    retargeter = VectorRetargeter(hand_model, config)
+
+    base_primary, base_secondary = retargeter._get_robot_frame_axes()
+    thumb_tip_site_id = mujoco.mj_name2id(
+        hand_model.model,
+        mujoco.mjtObj.mjOBJ_SITE,
+        "thumb_distal_tip",
+    )
+    thumb_tip_before = hand_model.data.site_xpos[thumb_tip_site_id].copy()
+
+    qpos = hand_model.get_qpos().copy()
+    name_to_idx = hand_model.get_joint_name_to_qpos_index()
+    qpos[name_to_idx["thumb_mcp"]] = 1.0
+    qpos[name_to_idx["thumb_ip"]] = 1.0
+    hand_model.set_qpos(qpos)
+    retargeter._forward(hand_model.get_qpos())
+
+    primary_after, secondary_after = retargeter._get_robot_frame_axes()
+    thumb_tip_after = hand_model.data.site_xpos[thumb_tip_site_id].copy()
+
+    assert np.linalg.norm(thumb_tip_after - thumb_tip_before) > 1e-3
+    assert np.allclose(primary_after, base_primary)
+    assert np.allclose(secondary_after, base_secondary)
 
 
 @pytest.mark.skipif(
