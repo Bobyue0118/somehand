@@ -151,6 +151,9 @@ class VectorRetargeter:
         self._dist_scales: list[float] = []
         self._dist_thresholds: list[float] = []
         self._dist_activation_types: list[str] = []
+        self._prev_activations: np.ndarray | None = None
+        self._smoothed_activations: np.ndarray | None = None
+        self._activation_alpha: float = config.solver.activation_alpha
         for constraint in config.distance_constraints:
             self._dist_human_pairs.append((constraint.human[0], constraint.human[1]))
             self._dist_weights.append(constraint.weight)
@@ -421,8 +424,7 @@ class VectorRetargeter:
                 loss += self._angle_weights[index] * diff * diff
         if self._target_distances is not None:
             for index in range(len(self._dist_site_ids)):
-                raw_dist = self._raw_human_distances[index]
-                activation = self._dist_activation(index, raw_dist)
+                activation = self._smoothed_activations[index]
                 if activation < 1e-4:
                     continue
                 id_a, is_site_a, id_b, is_site_b = self._dist_site_ids[index]
@@ -523,8 +525,7 @@ class VectorRetargeter:
 
         if self._target_distances is not None:
             for index in range(len(self._dist_site_ids)):
-                raw_dist = self._raw_human_distances[index]
-                activation = self._dist_activation(index, raw_dist)
+                activation = self._smoothed_activations[index]
                 if activation < 1e-4:
                     continue
                 id_a, is_site_a, id_b, is_site_b = self._dist_site_ids[index]
@@ -622,12 +623,23 @@ class VectorRetargeter:
         if self._dist_human_pairs:
             target_distances = np.zeros(len(self._dist_human_pairs))
             raw_human_distances = np.zeros(len(self._dist_human_pairs))
+            smoothed_activations = np.zeros(len(self._dist_human_pairs))
             for index, (a, b) in enumerate(self._dist_human_pairs):
                 raw_dist = float(np.linalg.norm(landmarks[a] - landmarks[b]))
                 raw_human_distances[index] = raw_dist
                 target_distances[index] = self._dist_scales[index] * raw_dist
+                raw_act = self._dist_activation(index, raw_dist)
+                if self._prev_activations is not None:
+                    smoothed_activations[index] = (
+                        self._activation_alpha * raw_act
+                        + (1.0 - self._activation_alpha) * self._prev_activations[index]
+                    )
+                else:
+                    smoothed_activations[index] = raw_act
             self._target_distances = target_distances
             self._raw_human_distances = raw_human_distances
+            self._smoothed_activations = smoothed_activations
+            self._prev_activations = smoothed_activations.copy()
         else:
             self._target_distances = None
 

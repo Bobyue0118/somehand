@@ -15,6 +15,7 @@ class SolverConfig:
     max_iterations: int = 30
     norm_delta: float = 0.01
     output_alpha: float = 0.70
+    activation_alpha: float = 0.3
 
 
 @dataclass
