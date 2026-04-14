@@ -1,6 +1,7 @@
 """Convert URDF hand models to MJCF for use with MuJoCo/Mink."""
 
 import os
+import re
 import shutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -125,11 +126,30 @@ def _resolve_mesh_path(mesh_ref: str, urdf_path: Path) -> Path:
     return (urdf_path.parent / mesh_path).resolve()
 
 
+_FLOAT_PATTERN = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
+
+
+def _sanitize_limit_attributes(root: ET.Element) -> None:
+    for limit_elem in root.iter("limit"):
+        for attr in ("lower", "upper", "effort", "velocity"):
+            value = limit_elem.get(attr)
+            if value is None:
+                continue
+            try:
+                float(value)
+            except ValueError:
+                match = _FLOAT_PATTERN.search(value)
+                if match is None:
+                    raise ValueError(f"Invalid numeric value for limit attribute {attr!r}: {value!r}")
+                limit_elem.set(attr, match.group(0))
+
+
 def _prepare_urdf_for_mujoco(
     urdf_path: Path,
 ) -> tuple[str, Path, dict[str, Path], dict[str, dict[str, float | str]]]:
     tree = ET.parse(urdf_path)
     root = tree.getroot()
+    _sanitize_limit_attributes(root)
     mimic_joints = _extract_mimic_joints(root)
 
     resolved_meshes: list[tuple[ET.Element, Path]] = []
@@ -154,6 +174,7 @@ def _prepare_urdf_for_mujoco(
             mujoco_elem = ET.SubElement(root, "mujoco")
         compiler = ET.SubElement(mujoco_elem, "compiler")
     compiler.set("meshdir", f"{meshdir}/")
+    compiler.set("balanceinertia", "true")
 
     mesh_assets: dict[str, Path] = {}
     for mesh_elem, resolved_path in resolved_meshes:
@@ -220,6 +241,7 @@ def convert_urdf_to_mjcf(
     if compiler is None:
         compiler = ET.SubElement(root, "compiler")
     compiler.set("meshdir", "meshes/")
+    compiler.set("balanceinertia", "true")
 
     asset = root.find("asset")
     if asset is not None:

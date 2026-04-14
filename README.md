@@ -38,6 +38,7 @@
 
 - 这张表描述的是 **retargeting 配置支持**，不等同于所有机型都具备真机 `real` backend 支持。
 - 云端默认分发的是运行所需的 `MJCF` 资产，不是 `URDF` 源文件。
+- 本仓库不提交 `assets/` 实际内容；本地仅保留占位目录，所有资产统一放在云端资产仓。
 
 ## 核心算法
 
@@ -56,7 +57,7 @@ git submodule update --init --recursive
 pip install -e .
 ```
 
-项目里的大体积 `assets` / 样例数据建议走外部仓库，不直接塞进 Git。现在支持和 `Teleopit` 类似的下载流程：
+项目里的大体积 `assets` / 样例数据统一走外部仓库，不直接塞进 Git。现在支持和 `Teleopit` 类似的下载流程：
 
 ```bash
 # ModelScope（推荐）
@@ -82,6 +83,8 @@ python scripts/setup/download_assets.py --source huggingface --repo-id 12e21/som
 
 - `ModelScope`：`BingqianWu/somehand-assets`
 - `HuggingFace`：`12e21/somehand-assets`
+
+如果你重新生成了 `MJCF` 或其它资源，请上传到上述云端资产仓，再由本地执行下载脚本同步；不要把生成结果直接提交到 `assets/`。
 
 主要依赖：mujoco, mink, mediapipe, opencv-python, numpy, pyyaml, daqp
 
@@ -397,7 +400,7 @@ somehand/
 │   ├── base/              # 按型号复用的共享模板
 │   ├── left/              # 可直接运行的左手配置
 │   └── right/             # 可直接运行的右手配置
-├── assets/                # 下载或本地生成的资源（默认 gitignored）
+├── assets/                # 仅保留占位目录；实际资源从云端资产仓下载
 │   ├── mjcf/
 │   └── models/
 ├── scripts/                # 薄工具脚本 / 诊断脚本
