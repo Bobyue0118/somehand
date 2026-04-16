@@ -49,7 +49,7 @@
 | Unitree | Dex5 | 20 | 20 |
 | Inspire | DFQ | 6 | 12 |
 | Inspire | FTP | 6 | 12 |
-| AGILEX | OmniHand | 10 | 16 |
+| AGIBOT | OmniHand | 10 | 16 |
 | BrainCo | Revo2 | 6 | 11 |
 | OYMotion | RoHand | 6 | 25 |
 | Sharpa | Wave 01 | 22 | 22 |
