@@ -8,6 +8,7 @@ OUTPUT_ROOT="$RECORDINGS_DIR/full_renders"
 LANDMARK_SCRIPT="$ROOT_DIR/scripts/render_landmark_video.py"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 FORCE=0
+RENDER_ROBOT_VIDEOS=1
 RENDER_LANDMARKS=1
 
 usage() {
@@ -20,6 +21,8 @@ Options:
   --configs-root PATH   Config root directory. Default: $CONFIG_ROOT
   --python BIN          Python executable. Default: $PYTHON_BIN
   --force               Re-render videos even if output already exists
+  --render-landmarks    Explicitly render landmarks-only videos
+  --landmarks-only      Render only landmarks-only videos
   --skip-landmarks      Skip rendering landmarks-only comparison videos
   -h, --help            Show this help
 
@@ -63,6 +66,15 @@ while [[ $# -gt 0 ]]; do
             ;;
         --force)
             FORCE=1
+            shift
+            ;;
+        --render-landmarks)
+            RENDER_LANDMARKS=1
+            shift
+            ;;
+        --landmarks-only)
+            RENDER_ROBOT_VIDEOS=0
+            RENDER_LANDMARKS=1
             shift
             ;;
         --skip-landmarks)
@@ -146,9 +158,11 @@ render_group() {
     done
 }
 
-render_group "right" "$RIGHT_RECORDING" "right"
-render_group "left" "$LEFT_RECORDING" "left"
-render_group "bihand" "$BIHAND_RECORDING" "both"
+if [[ "$RENDER_ROBOT_VIDEOS" -eq 1 ]]; then
+    render_group "right" "$RIGHT_RECORDING" "right"
+    render_group "left" "$LEFT_RECORDING" "left"
+    render_group "bihand" "$BIHAND_RECORDING" "both"
+fi
 
 render_landmark_video() {
     local group="$1"

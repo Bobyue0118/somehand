@@ -10,7 +10,11 @@ from somehand.runtime.sink_outputs import (
     RobotHandVideoOutputSink,
     TrajectoryRecorder,
 )
-from somehand.runtime.sink_rendering import fit_video_size as _fit_video_size
+from somehand.runtime.sink_rendering import (
+    create_offscreen_renderer as _create_offscreen_renderer,
+    fit_video_size as _fit_video_size,
+    transform_points as _transform_points,
+)
 
 __all__ = [
     "AsyncBiHandLandmarkOutputSink",
@@ -21,5 +25,7 @@ __all__ = [
     "RobotHandTargetOutputSink",
     "RobotHandVideoOutputSink",
     "TrajectoryRecorder",
+    "_create_offscreen_renderer",
     "_fit_video_size",
+    "_transform_points",
 ]

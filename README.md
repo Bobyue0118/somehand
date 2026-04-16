@@ -30,6 +30,33 @@
 
 ---
 
+## Supported Hand Models
+
+| Company | Model | DoF | Joints |
+| --- | --- | ---: | ---: |
+| LinkerHand | L6 | 6 | 11 |
+| LinkerHand | L10 | 10 | 20 |
+| LinkerHand | L20 | 16 | 21 |
+| LinkerHand | L20 Pro | 17 | 21 |
+| LinkerHand | L21 | 17 | 17 |
+| LinkerHand | L25 | 21 | 21 |
+| LinkerHand | L30 | 20 | 20 |
+| LinkerHand | LHG20 | 16 | 21 |
+| LinkerHand | O6 | 6 | 11 |
+| LinkerHand | O7 | 7 | 17 |
+| LinkerHand | T12 | 14 | 19 |
+| DexRobot | DexHand021 | 20 | 20 |
+| Unitree | Dex5 | 20 | 20 |
+| Inspire | DFQ | 6 | 12 |
+| Inspire | FTP | 6 | 12 |
+| AGILEX | OmniHand | 10 | 16 |
+| BrainCo | Revo2 | 6 | 11 |
+| OYMotion | RoHand | 6 | 25 |
+| Sharpa | Wave 01 | 22 | 22 |
+| Wuji | Wuji Hand | 20 | 20 |
+
+---
+
 ## Quick Start
 
 **1. Install**

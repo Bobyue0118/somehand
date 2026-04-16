@@ -56,3 +56,26 @@ def test_removed_signal_filter_module_is_not_importable():
     )
 
     assert result.returncode != 0
+
+
+def test_infrastructure_sinks_keeps_rendering_compat_exports():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                f"sys.path.insert(0, {str(SRC)!r}); "
+                "from somehand.infrastructure.sinks import "
+                "_create_offscreen_renderer, _fit_video_size, _transform_points; "
+                "assert callable(_create_offscreen_renderer); "
+                "assert callable(_fit_video_size); "
+                "assert callable(_transform_points)"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
