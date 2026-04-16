@@ -22,6 +22,7 @@ from somehand.domain.config import (
 )
 from somehand.domain.hand_side import normalize_hand_side
 from somehand.infrastructure.universal_config import apply_universal_preset
+from somehand.runtime.config_validation import validate_runtime_bihand_config, validate_runtime_retargeting_config
 
 
 def _deep_merge(base: object, override: object) -> object:
@@ -200,6 +201,7 @@ def load_retargeting_config(config_path: str) -> RetargetingConfig:
     )
 
     config.validate()
+    validate_runtime_retargeting_config(config)
     return config
 
 
@@ -241,4 +243,5 @@ def load_bihand_config(config_path: str) -> BiHandRetargetingConfig:
         ),
     )
     config.validate()
+    validate_runtime_bihand_config(config)
     return config

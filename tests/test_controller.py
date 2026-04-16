@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from somehand.application import ControlledRetargetingSession
+import somehand.cli.runtime as cli_runtime
 from somehand.domain import HandCommand, HandFrame, SourceFrame
 from somehand.infrastructure.config_loader import load_retargeting_config
 from somehand.infrastructure.hand_model import HandModel
@@ -313,7 +314,7 @@ def test_build_runtime_session_uses_controlled_session_for_sim(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(cli_module, "MujocoSimController", _FakeController)
+    monkeypatch.setattr(cli_runtime, "MujocoSimController", _FakeController)
 
     engine = SimpleNamespace(
         hand_model=object(),
@@ -333,7 +334,7 @@ def test_build_runtime_session_uses_controlled_session_for_sim(monkeypatch):
         modbus_port="None",
     )
 
-    session = cli_module._build_runtime_session(engine, args, visualize=False, show_preview=False)
+    session = cli_runtime.build_runtime_session(engine, args, visualize=False, show_preview=False)
 
     assert isinstance(session, ControlledRetargetingSession)
     assert captured == {
@@ -391,9 +392,9 @@ def test_build_runtime_session_adds_target_and_sim_viewers_for_sim(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(cli_module, "RobotHandTargetOutputSink", _FakeTargetSink)
-    monkeypatch.setattr(cli_module, "RobotHandOutputSink", _FakeStateSink)
-    monkeypatch.setattr(cli_module, "MujocoSimController", lambda *args, **kwargs: _FakeController())
+    monkeypatch.setattr(cli_runtime, "RobotHandTargetOutputSink", _FakeTargetSink)
+    monkeypatch.setattr(cli_runtime, "RobotHandOutputSink", _FakeStateSink)
+    monkeypatch.setattr(cli_runtime, "MujocoSimController", lambda *args, **kwargs: _FakeController())
 
     engine = SimpleNamespace(
         hand_model=object(),
@@ -413,7 +414,7 @@ def test_build_runtime_session_adds_target_and_sim_viewers_for_sim(monkeypatch):
         modbus_port="None",
     )
 
-    session = cli_module._build_runtime_session(engine, args, visualize=True, show_preview=False)
+    session = cli_runtime.build_runtime_session(engine, args, visualize=True, show_preview=False)
 
     assert isinstance(session, ControlledRetargetingSession)
     assert created == [
@@ -471,13 +472,13 @@ def test_build_runtime_session_can_skip_target_viewer_for_sim(monkeypatch):
             return None
 
     monkeypatch.setattr(
-        cli_module,
+        cli_runtime,
         "AsyncLandmarkOutputSink",
         lambda **kwargs: SimpleNamespace(is_running=True, close=lambda: None),
     )
-    monkeypatch.setattr(cli_module, "RobotHandTargetOutputSink", _FakeTargetSink)
-    monkeypatch.setattr(cli_module, "RobotHandOutputSink", _FakeStateSink)
-    monkeypatch.setattr(cli_module, "MujocoSimController", lambda *args, **kwargs: _FakeController())
+    monkeypatch.setattr(cli_runtime, "RobotHandTargetOutputSink", _FakeTargetSink)
+    monkeypatch.setattr(cli_runtime, "RobotHandOutputSink", _FakeStateSink)
+    monkeypatch.setattr(cli_runtime, "MujocoSimController", lambda *args, **kwargs: _FakeController())
 
     engine = SimpleNamespace(
         hand_model=object(),
@@ -497,7 +498,7 @@ def test_build_runtime_session_can_skip_target_viewer_for_sim(monkeypatch):
         modbus_port="None",
     )
 
-    session = cli_module._build_runtime_session(
+    session = cli_runtime.build_runtime_session(
         engine,
         args,
         visualize=True,
@@ -574,10 +575,10 @@ def test_build_runtime_session_can_skip_landmark_viewer_for_sim(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(cli_module, "AsyncLandmarkOutputSink", _FakeLandmarkSink)
-    monkeypatch.setattr(cli_module, "RobotHandTargetOutputSink", _FakeTargetSink)
-    monkeypatch.setattr(cli_module, "RobotHandOutputSink", _FakeStateSink)
-    monkeypatch.setattr(cli_module, "MujocoSimController", lambda *args, **kwargs: _FakeController())
+    monkeypatch.setattr(cli_runtime, "AsyncLandmarkOutputSink", _FakeLandmarkSink)
+    monkeypatch.setattr(cli_runtime, "RobotHandTargetOutputSink", _FakeTargetSink)
+    monkeypatch.setattr(cli_runtime, "RobotHandOutputSink", _FakeStateSink)
+    monkeypatch.setattr(cli_runtime, "MujocoSimController", lambda *args, **kwargs: _FakeController())
 
     engine = SimpleNamespace(
         hand_model=object(),
@@ -597,7 +598,7 @@ def test_build_runtime_session_can_skip_landmark_viewer_for_sim(monkeypatch):
         modbus_port="None",
     )
 
-    session = cli_module._build_runtime_session(
+    session = cli_runtime.build_runtime_session(
         engine,
         args,
         visualize=True,

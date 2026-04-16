@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-
-from somehand.external_assets import build_missing_asset_message
 
 from .hand_side import HAND_SIDES, normalize_hand_side
 
@@ -210,13 +207,6 @@ class RetargetingConfig:
                 raise ValueError("angle constraint scale must be > 0")
         if self.hand.side not in HAND_SIDES:
             raise ValueError("hand.side must only contain 'left' or 'right'")
-        if not Path(self.hand.mjcf_path).exists():
-            raise FileNotFoundError(
-                build_missing_asset_message(
-                    self.hand.mjcf_path,
-                    label="MJCF file",
-                )
-            )
         if self.controller.backend not in {"viewer", "sim", "real"}:
             raise ValueError("controller.backend must be one of: viewer, sim, real")
         if self.controller.transport not in {"can", "modbus"}:
@@ -250,10 +240,6 @@ class BiHandRetargetingConfig:
             raise ValueError("left_config_path must be set")
         if not self.right_config_path:
             raise ValueError("right_config_path must be set")
-        if not Path(self.left_config_path).exists():
-            raise FileNotFoundError(f"Left-hand config not found: {self.left_config_path}")
-        if not Path(self.right_config_path).exists():
-            raise FileNotFoundError(f"Right-hand config not found: {self.right_config_path}")
         if self.viewer.panel_width <= 0:
             raise ValueError("viewer.panel_width must be > 0")
         if self.viewer.panel_height <= 0:

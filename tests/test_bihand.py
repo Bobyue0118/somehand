@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import somehand.interfaces.cli as cli_module
+import somehand.cli.runtime as cli_runtime
 import somehand.infrastructure.sinks as sinks_module
 from somehand.cli import build_parser
 from somehand.infrastructure.artifacts import load_bihand_recording_artifact, save_bihand_recording_artifact
@@ -156,7 +157,7 @@ def test_build_bihand_session_adds_replay_video_sink(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(cli_module, "BiHandVideoOutputSink", _FakeVideoSink)
+    monkeypatch.setattr(cli_runtime, "BiHandVideoOutputSink", _FakeVideoSink)
 
     engine = SimpleNamespace(
         left_engine=SimpleNamespace(hand_model=object()),
@@ -174,7 +175,7 @@ def test_build_bihand_session_adds_replay_video_sink(monkeypatch):
             )
         ),
     )
-    session = cli_module._build_bihand_session(
+    session = cli_runtime.build_bihand_session(
         engine,
         visualize=False,
         show_preview=False,
@@ -205,8 +206,8 @@ def test_build_bihand_session_adds_landmark_frame_sink(monkeypatch):
         created.update(kwargs)
         return "frame_sink"
 
-    monkeypatch.setattr(cli_module, "AsyncBiHandLandmarkOutputSink", _fake_frame_sink)
-    monkeypatch.setattr(cli_module, "BiHandOutputWindowSink", lambda *args, **kwargs: "result_sink")
+    monkeypatch.setattr(cli_runtime, "AsyncBiHandLandmarkOutputSink", _fake_frame_sink)
+    monkeypatch.setattr(cli_runtime, "BiHandOutputWindowSink", lambda *args, **kwargs: "result_sink")
 
     engine = SimpleNamespace(
         left_engine=SimpleNamespace(hand_model=object()),
@@ -225,7 +226,7 @@ def test_build_bihand_session_adds_landmark_frame_sink(monkeypatch):
         ),
     )
 
-    session = cli_module._build_bihand_session(
+    session = cli_runtime.build_bihand_session(
         engine,
         visualize=True,
         show_preview=False,

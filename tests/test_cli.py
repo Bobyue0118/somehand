@@ -1,17 +1,21 @@
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+import importlib
 
 import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import somehand.interfaces.cli as cli_module
+import somehand.cli.commands as cli_module
+import somehand.cli.runtime as cli_runtime
 import somehand.infrastructure.sinks as sinks_module
 from somehand.cli import build_parser
 from somehand.infrastructure.sinks import _fit_video_size
 from somehand.paths import DEFAULT_BIHAND_CONFIG_PATH, DEFAULT_CONFIG_PATH, DEFAULT_HC_MOCAP_REFERENCE_BVH
+
+cli_main_module = importlib.import_module("somehand.cli.main")
 
 
 def test_hc_mocap_uses_repo_defaults():
@@ -166,7 +170,7 @@ def test_webcam_both_dispatches_to_bihand(monkeypatch):
     monkeypatch.setattr(cli_module, "_run_bihand_webcam", lambda args: called.append(("bihand", args.config, args.hand)))
     monkeypatch.setattr(cli_module, "_run_webcam", lambda args: called.append(("single", args.config, args.hand)))
 
-    cli_module.main(["webcam", "--hand", "both"])
+    cli_main_module.main(["webcam", "--hand", "both"])
 
     assert called == [("bihand", str(DEFAULT_BIHAND_CONFIG_PATH), "both")]
 
@@ -197,10 +201,10 @@ def test_build_session_adds_replay_video_sink(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(cli_module, "RobotHandVideoOutputSink", _FakeVideoSink)
+    monkeypatch.setattr(cli_runtime, "RobotHandVideoOutputSink", _FakeVideoSink)
 
     engine = SimpleNamespace(hand_model=object())
-    session = cli_module._build_session(
+    session = cli_runtime.build_session(
         engine,
         visualize=False,
         show_preview=False,
@@ -241,11 +245,11 @@ def test_build_session_adds_single_viewer_sink_for_viewer_backend(monkeypatch):
         def close(self):
             return None
 
-    monkeypatch.setattr(cli_module, "AsyncLandmarkOutputSink", _FakeLandmarkSink)
-    monkeypatch.setattr(cli_module, "RobotHandOutputSink", _FakeOutputSink)
+    monkeypatch.setattr(cli_runtime, "AsyncLandmarkOutputSink", _FakeLandmarkSink)
+    monkeypatch.setattr(cli_runtime, "RobotHandOutputSink", _FakeOutputSink)
 
     engine = SimpleNamespace(hand_model=object())
-    session = cli_module._build_session(
+    session = cli_runtime.build_session(
         engine,
         backend="viewer",
         visualize=True,

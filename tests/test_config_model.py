@@ -227,7 +227,7 @@ def test_removed_pinch_is_rejected(tmp_path):
 
 
 def test_top_level_loader_exports_work():
-    from somehand import load_bihand_config, load_retargeting_config
+    from somehand.runtime import load_bihand_config, load_retargeting_config
 
     config = load_retargeting_config("configs/retargeting/right/linkerhand_l20_right.yaml")
     bihand = load_bihand_config("configs/retargeting/bihand/linkerhand_l20_bihand.yaml")
@@ -238,10 +238,17 @@ def test_top_level_loader_exports_work():
 
 
 def test_config_classes_do_not_expose_loader_classmethods():
-    from somehand import BiHandRetargetingConfig, RetargetingConfig
+    from somehand.core import BiHandRetargetingConfig, RetargetingConfig
 
     assert not hasattr(RetargetingConfig, "load")
     assert not hasattr(BiHandRetargetingConfig, "load")
+
+
+def test_top_level_package_is_metadata_only():
+    import somehand
+
+    assert hasattr(somehand, "__version__")
+    assert not hasattr(somehand, "load_retargeting_config")
 
 
 def test_all_mjcf_assets_have_side_specific_configs():

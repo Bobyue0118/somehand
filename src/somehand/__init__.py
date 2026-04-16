@@ -1,24 +1,5 @@
-"""somehand: Universal dexterous hand retargeting based on MediaPipe and Mink."""
+"""somehand package metadata."""
 
-from somehand.application import (
-    BiHandRetargetingEngine,
-    BiHandRetargetingSession,
-    ControlledRetargetingSession,
-    RetargetingEngine,
-    RetargetingSession,
-)
-from somehand.domain import BiHandRetargetingConfig, ControllerConfig, RetargetingConfig
-from somehand.infrastructure.config_loader import load_bihand_config, load_retargeting_config
+__version__ = "0.1.0"
 
-__all__ = [
-    "BiHandRetargetingConfig",
-    "BiHandRetargetingEngine",
-    "BiHandRetargetingSession",
-    "ControlledRetargetingSession",
-    "ControllerConfig",
-    "load_bihand_config",
-    "load_retargeting_config",
-    "RetargetingConfig",
-    "RetargetingEngine",
-    "RetargetingSession",
-]
+__all__ = ["__version__"]
