@@ -101,6 +101,28 @@ def test_viewer_spawn_context_uses_mjpython_launcher_on_macos(monkeypatch):
     assert fake_context.executable == "/env/bin/mjpython"
 
 
+def test_resolve_mjpython_prefers_explicit_env(monkeypatch, tmp_path):
+    env_bin = tmp_path / "env" / "bin"
+    env_bin.mkdir(parents=True)
+    python_executable = env_bin / "python"
+    python_executable.write_text("")
+    auto_mjpython = env_bin / "mjpython"
+    auto_mjpython.write_text("")
+    auto_mjpython.chmod(0o755)
+
+    explicit_mjpython = tmp_path / "custom" / "mjpython"
+    explicit_mjpython.parent.mkdir()
+    explicit_mjpython.write_text("")
+    explicit_mjpython.chmod(0o755)
+
+    monkeypatch.setattr(viewer_async.sys, "executable", str(python_executable))
+    monkeypatch.setenv("MJPYTHON_BIN", str(explicit_mjpython))
+    monkeypatch.setenv("CONDA_PREFIX", str(tmp_path / "env"))
+    monkeypatch.setenv("PATH", str(env_bin))
+
+    assert viewer_async._resolve_mjpython_executable() == str(explicit_mjpython)
+
+
 def test_set_viewer_window_title_updates_sim_filename():
     class _FakeSim:
         def __init__(self):

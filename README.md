@@ -89,9 +89,8 @@ You should see a MuJoCo viewer replaying the sample recording.
 ```bash
 somehand webcam
 
-# On macOS, use the following command
-/opt/homebrew/anaconda3/envs/somehand/bin/mjpython \
-/opt/homebrew/anaconda3/envs/somehand/bin/somehand webcam --hand both
+# On macOS, run MuJoCo viewers through mjpython.
+mjpython "$(command -v somehand)" webcam --hand both
 ```
 
 **Replay in MuJoCo sim**

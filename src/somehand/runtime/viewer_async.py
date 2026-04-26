@@ -23,7 +23,13 @@ VIEWER_LOOP_PERIOD_S = 1.0 / 120.0
 
 
 def _resolve_mjpython_executable() -> str | None:
-    candidates = [Path(sys.executable).with_name("mjpython")]
+    candidates = []
+
+    mjpython_bin = os.environ.get("MJPYTHON_BIN")
+    if mjpython_bin:
+        candidates.append(Path(mjpython_bin))
+
+    candidates.append(Path(sys.executable).with_name("mjpython"))
 
     conda_prefix = os.environ.get("CONDA_PREFIX")
     if conda_prefix:
@@ -32,10 +38,6 @@ def _resolve_mjpython_executable() -> str | None:
     path_executable = shutil.which("mjpython")
     if path_executable:
         candidates.append(Path(path_executable))
-
-    mjpython_bin = os.environ.get("MJPYTHON_BIN")
-    if mjpython_bin:
-        candidates.append(Path(mjpython_bin))
 
     seen: set[str] = set()
     for candidate in candidates:
